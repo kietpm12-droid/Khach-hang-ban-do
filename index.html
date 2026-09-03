@@ -1,22 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <title>Khách Hàng Bản Đồ</title>
-    <!-- SUPABASE -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- LEAFLET -->
+    <!-- Leaflet -->
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     >
     <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    ></script>
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -24,338 +22,604 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #f3f4f6;
-            color: #222;
+            background: #f4f6f8;
+            color: #17202a;
+        }
+        button,
+        input,
+        textarea {
+            font-family: inherit;
+        }
+        button {
+            cursor: pointer;
         }
         .hidden {
             display: none !important;
         }
-        button {
-            border: none;
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        input,
-        textarea {
-            width: 100%;
-            padding: 13px;
-            margin-top: 6px;
-            margin-bottom: 14px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            font-size: 16px;
-            background: white;
-        }
-        textarea {
-            min-height: 90px;
-            resize: vertical;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-        }
-        /* =====================
-           ĐĂNG NHẬP
-        ===================== */
+        /* =========================
+           LOGIN
+        ========================= */
         #loginView {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            background: linear-gradient(135deg, #e8f5e9, #ffffff);
         }
         .login-box {
             width: 100%;
             max-width: 420px;
             background: white;
             padding: 25px;
-            border-radius: 18px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.12);
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.10);
         }
-        .login-box h1 {
+        .login-title {
             text-align: center;
-            margin-top: 0;
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 8px;
         }
-        #loginBtn {
+        .login-subtitle {
+            text-align: center;
+            color: #667085;
+            margin-bottom: 25px;
+        }
+        .form-label {
+            display: block;
+            font-weight: bold;
+            margin: 12px 0 7px;
+        }
+        .form-input {
             width: 100%;
-            background: #2563eb;
+            border: 1px solid #d0d5dd;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            outline: none;
+            background: white;
+        }
+        .form-input:focus {
+            border-color: #16a34a;
+        }
+        .login-button {
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 18px;
+            background: #16a34a;
             color: white;
+            font-size: 17px;
             font-weight: bold;
         }
-        #loginMsg {
-            text-align: center;
-            margin-top: 12px;
-            color: #d00;
-        }
         .remember {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 15px;
+            margin-top: 12px;
+            font-size: 14px;
         }
-        .remember input {
-            width: auto;
-            margin: 0;
+        #loginMsg {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 14px;
         }
-        /* =====================
+        /* =========================
            APP
-        ===================== */
+        ========================= */
         #appView {
             min-height: 100vh;
         }
-        .header {
-            background: #2563eb;
+        .topbar {
+            height: 60px;
+            background: #16a34a;
             color: white;
-            padding: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
             position: sticky;
             top: 0;
             z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,.15);
         }
-        .header h2 {
-            margin: 0;
-            font-size: 20px;
+        .menu-button {
+            width: 44px;
+            height: 44px;
+            border: 0;
+            background: transparent;
+            color: white;
+            font-size: 29px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .container {
-            max-width: 700px;
+        .top-title {
+            font-size: 19px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        /* =========================
+           SIDE MENU
+        ========================= */
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.40);
+            z-index: 2000;
+        }
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -290px;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            z-index: 2100;
+            transition: left .25s ease;
+            box-shadow: 4px 0 15px rgba(0,0,0,.20);
+            overflow-y: auto;
+        }
+        .side-menu.open {
+            left: 0;
+        }
+        .menu-header {
+            background: #16a34a;
+            color: white;
+            padding: 25px 20px;
+        }
+        .menu-header-title {
+            font-size: 21px;
+            font-weight: bold;
+        }
+        .menu-header-user {
+            font-size: 13px;
+            margin-top: 7px;
+            opacity: .9;
+            word-break: break-word;
+        }
+        .menu-item {
+            width: 100%;
+            padding: 17px 20px;
+            border: 0;
+            background: white;
+            text-align: left;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .menu-item:active {
+            background: #f0fdf4;
+        }
+        .menu-item.logout {
+            color: #dc2626;
+        }
+        /* =========================
+           CONTENT
+        ========================= */
+        .content {
+            max-width: 800px;
             margin: auto;
             padding: 15px;
         }
-        .box {
+        .page-title {
+            font-size: 23px;
+            font-weight: bold;
+            margin: 5px 0 18px;
+        }
+        .card {
             background: white;
-            border-radius: 15px;
-            padding: 18px;
+            border-radius: 16px;
+            padding: 17px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
         }
-        /* =====================
-           NÚT
-        ===================== */
-        .gps-btn {
-            width: 100%;
-            background: #16a34a;
-            color: white;
+        .section-title {
+            font-size: 18px;
             font-weight: bold;
+            margin-bottom: 12px;
         }
-        .camera-btn {
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .action-button {
             width: 100%;
-            background: #7c3aed;
-            color: white;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
             font-weight: bold;
+            margin-top: 10px;
         }
-        .save-btn {
-            width: 100%;
+        .gps-button {
             background: #2563eb;
             color: white;
-            font-weight: bold;
-            font-size: 17px;
         }
-        #gpsStatus,
-        #photoStatus,
-        #saveStatus {
-            margin-top: 8px;
-            margin-bottom: 8px;
+        .camera-button {
+            background: #7c3aed;
+            color: white;
+        }
+        .save-button {
+            background: #16a34a;
+            color: white;
+        }
+        .cancel-button {
+            background: #e5e7eb;
+            color: #111827;
+        }
+        .status {
+            margin-top: 9px;
             font-size: 14px;
+            line-height: 1.5;
         }
-        /* =====================
-           ẢNH
-        ===================== */
-        #photoPreview {
+        .photo-preview {
             width: 100%;
-            max-height: 300px;
+            max-height: 280px;
             object-fit: cover;
             border-radius: 12px;
             margin-top: 12px;
         }
-        /* =====================
-           DANH SÁCH
-        ===================== */
+        /* =========================
+           SEARCH
+        ========================= */
+        .search-box {
+            width: 100%;
+            border: 1px solid #d0d5dd;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        /* =========================
+           CUSTOMER
+        ========================= */
         .customer-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 16px;
             padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 14px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
         }
-        .customer-card h3 {
-            margin-top: 0;
+        .customer-name {
+            font-size: 19px;
+            font-weight: bold;
+            margin-bottom: 8px;
         }
-        .customer-card p {
-            margin: 8px 0;
+        .customer-info {
+            margin: 7px 0;
             line-height: 1.5;
         }
-        .customer-card button {
-            margin-right: 5px;
-            margin-top: 5px;
-            background: #e5e7eb;
+        .customer-photo {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-top: 10px;
         }
-        /* =====================
-           BẢN ĐỒ
-        ===================== */
+        .customer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .small-button {
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 7px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .edit-button {
+            background: #fef3c7;
+        }
+        .delete-button {
+            background: #fee2e2;
+        }
+        .map-button {
+            background: #dbeafe;
+        }
+        /* =========================
+           MAP
+        ========================= */
         #map {
             width: 100%;
-            height: 450px;
+            height: 500px;
             border-radius: 15px;
             overflow: hidden;
         }
-        @media (max-width: 500px) {
-            .container {
-                padding: 10px;
+        /* =========================
+           EMPTY
+        ========================= */
+        .empty {
+            text-align: center;
+            color: #667085;
+            padding: 30px 10px;
+        }
+        @media(max-width:500px) {
+            .content {
+                padding: 12px;
             }
-            .box {
-                padding: 14px;
+            #map {
+                height: 430px;
             }
-            button {
-                font-size: 15px;
+            .top-title {
+                font-size: 17px;
             }
         }
     </style>
 </head>
 <body>
-<!-- ==================================================
-     ĐĂNG NHẬP
-================================================== -->
+<!-- =========================
+     LOGIN
+========================= -->
 <div id="loginView">
     <div class="login-box">
-        <h1>🔐 Đăng nhập</h1>
-        <label>Email</label>
+        <div class="login-title">
+            👥 Khách Hàng Bản Đồ
+        </div>
+        <div class="login-subtitle">
+            Đăng nhập để sử dụng ứng dụng
+        </div>
+        <label class="form-label">
+            Email
+        </label>
         <input
             id="email"
+            class="form-input"
             type="email"
             placeholder="Nhập email"
-            autocomplete="email"
+            autocomplete="username"
         >
-        <label>Mật khẩu</label>
+        <label class="form-label">
+            Mật khẩu
+        </label>
         <input
             id="password"
+            class="form-input"
             type="password"
             placeholder="Nhập mật khẩu"
             autocomplete="current-password"
         >
         <div class="remember">
-            <input
-                id="rememberLogin"
-                type="checkbox"
-            >
-            <span>Ghi nhớ email</span>
+            <label>
+                <input
+                    id="rememberLogin"
+                    type="checkbox"
+                >
+                Ghi nhớ email
+            </label>
         </div>
-        <button id="loginBtn">
-            ĐĂNG NHẬP
+        <button
+            id="loginBtn"
+            class="login-button">
+            🔐 ĐĂNG NHẬP
         </button>
         <div id="loginMsg"></div>
     </div>
 </div>
-<!-- ==================================================
+<!-- =========================
      APP
-================================================== -->
-<div
-    id="appView"
-    class="hidden"
->
-    <div class="header">
-        <h2>
-            📍 Khách Hàng Bản Đồ
-        </h2>
-    </div>
-    <div class="container">
-        <!-- ==========================
-             NHẬP KHÁCH HÀNG
-        =========================== -->
-        <div class="box">
-            <h2>➕ Thêm khách hàng</h2>
-            <label>
-                Họ tên
-            </label>
-            <input
-                id="name"
-                type="text"
-                placeholder="Nhập họ tên khách hàng"
-            >
-            <label>
-                Địa chỉ
-            </label>
-            <textarea
-                id="address"
-                placeholder="Nhập địa chỉ khách hàng"
-            ></textarea>
-            <label>
-                Ghi chú
-            </label>
-            <textarea
-                id="note"
-                placeholder="Nhập ghi chú"
-            ></textarea>
-            <!-- GPS -->
-            <button
-                id="gpsBtn"
-                class="gps-btn"
-            >
-                📍 LẤY VỊ TRÍ GPS
-            </button>
-            <div id="gpsStatus"></div>
-            <!-- CAMERA -->
-            <button
-                id="cameraBtn"
-                class="camera-btn"
-            >
-                📷 CHỤP ẢNH NHÀ KHÁCH
-            </button>
-            <!--
-                Quan trọng:
-                capture="environment"
-                = ưu tiên camera sau của điện thoại.
-                Khi bấm nút trên iPhone/Android,
-                điện thoại sẽ mở camera mặc định.
-            -->
-            <input
-                id="cameraInput"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                hidden
-            >
-            <div id="photoStatus"></div>
-            <img
-                id="photoPreview"
-                class="hidden"
-                alt="Ảnh nhà khách"
-            >
-            <br>
-            <button
-                id="saveBtn"
-                class="save-btn"
-            >
-                💾 LƯU KHÁCH HÀNG
-            </button>
-            <div id="saveStatus"></div>
+========================= -->
+<div id="appView" class="hidden">
+    <!-- TOP BAR -->
+    <div class="topbar">
+        <button
+            id="menuBtn"
+            class="menu-button">
+            ☰
+        </button>
+        <div
+            id="topTitle"
+            class="top-title">
+            Khách Hàng Bản Đồ
         </div>
-        <!-- ==========================
-             TÌM KIẾM
-        =========================== -->
-        <div class="box">
-            <h2>🔎 Danh sách khách hàng</h2>
+    </div>
+    <!-- SIDE MENU -->
+    <div
+        id="menuOverlay"
+        class="menu-overlay hidden">
+    </div>
+    <div
+        id="sideMenu"
+        class="side-menu">
+        <div class="menu-header">
+            <div class="menu-header-title">
+                👥 KHÁCH HÀNG
+            </div>
+            <div
+                id="menuUser"
+                class="menu-header-user">
+                Đang đăng nhập...
+            </div>
+        </div>
+        <button
+            class="menu-item"
+            data-page="home">
+            🏠 Trang chủ
+        </button>
+        <button
+            class="menu-item"
+            data-page="add">
+            ➕ Thêm khách hàng
+        </button>
+        <button
+            class="menu-item"
+            data-page="customers">
+            👥 Danh sách khách hàng
+        </button>
+        <button
+            class="menu-item"
+            data-page="map">
+            🗺️ Bản đồ khách hàng
+        </button>
+        <button
+            id="logoutBtn"
+            class="menu-item logout">
+            🚪 Đăng xuất
+        </button>
+    </div>
+    <!-- CONTENT -->
+    <main class="content">
+        <!-- HOME -->
+        <section
+            id="page-home"
+            class="page">
+            <div class="page-title">
+                🏠 Trang chủ
+            </div>
+            <div class="card">
+                <div class="section-title">
+                    👋 Xin chào!
+                </div>
+                <p>
+                    Chào mừng bạn đến với ứng dụng
+                    <b>Khách Hàng Bản Đồ</b>.
+                </p>
+                <p>
+                    Quản lý khách hàng, lấy vị trí GPS,
+                    chụp ảnh nhà khách và xem khách hàng
+                    trên bản đồ.
+                </p>
+            </div>
+            <div class="card">
+                <div class="section-title">
+                    📊 Thống kê
+                </div>
+                <div id="homeStats">
+                    Đang tải...
+                </div>
+            </div>
+            <button
+                class="action-button save-button"
+                onclick="showPage('add')">
+                ➕ THÊM KHÁCH HÀNG
+            </button>
+        </section>
+        <!-- ADD -->
+        <section
+            id="page-add"
+            class="page hidden">
+            <div
+                id="addTitle"
+                class="page-title">
+                ➕ Thêm khách hàng
+            </div>
+            <div class="card">
+                <div class="section-title">
+                    👤 Thông tin khách hàng
+                </div>
+                <label class="form-label">
+                    Họ tên *
+                </label>
+                <input
+                    id="name"
+                    class="form-input"
+                    type="text"
+                    placeholder="Nhập họ tên khách hàng"
+                >
+                <label class="form-label">
+                    Địa chỉ *
+                </label>
+                <textarea
+                    id="address"
+                    class="form-input"
+                    placeholder="Nhập địa chỉ khách hàng">
+                </textarea>
+                <label class="form-label">
+                    Ghi chú
+                </label>
+                <textarea
+                    id="note"
+                    class="form-input"
+                    placeholder="Nhập ghi chú">
+                </textarea>
+            </div>
+            <!-- GPS -->
+            <div class="card">
+                <div class="section-title">
+                    📍 Vị trí khách hàng
+                </div>
+                <button
+                    id="gpsBtn"
+                    class="action-button gps-button">
+                    📍 LẤY VỊ TRÍ GPS
+                </button>
+                <div
+                    id="gpsStatus"
+                    class="status">
+                </div>
+            </div>
+            <!-- PHOTO -->
+            <div class="card">
+                <div class="section-title">
+                    📷 Ảnh nhà khách
+                </div>
+                <button
+                    id="cameraBtn"
+                    class="action-button camera-button">
+                    📷 CHỤP ẢNH NHÀ KHÁCH
+                </button>
+                <input
+                    id="cameraInput"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    hidden
+                >
+                <div
+                    id="photoStatus"
+                    class="status">
+                </div>
+                <img
+                    id="photoPreview"
+                    class="photo-preview hidden"
+                    alt="Ảnh nhà khách"
+                >
+            </div>
+            <!-- SAVE -->
+            <div class="card">
+                <button
+                    id="saveBtn"
+                    class="action-button save-button">
+                    💾 LƯU KHÁCH HÀNG
+                </button>
+                <button
+                    id="cancelBtn"
+                    class="action-button cancel-button">
+                    ↩️ HỦY
+                </button>
+                <div
+                    id="saveStatus"
+                    class="status">
+                </div>
+            </div>
+        </section>
+        <!-- CUSTOMERS -->
+        <section
+            id="page-customers"
+            class="page hidden">
+            <div class="page-title">
+                👥 Danh sách khách hàng
+            </div>
             <input
                 id="search"
+                class="search-box"
                 type="search"
-                placeholder="Tìm theo tên, địa chỉ, ghi chú..."
+                placeholder="🔎 Tìm theo tên, địa chỉ, ghi chú..."
             >
             <div id="customerList"></div>
-        </div>
-        <!-- ==========================
-             BẢN ĐỒ
-        =========================== -->
-        <div
-            id="mapView"
-            class="box hidden"
-        >
-            <h2>🗺️ Bản đồ</h2>
-            <div id="map"></div>
-        </div>
-    </div>
+        </section>
+        <!-- MAP -->
+        <section
+            id="page-map"
+            class="page hidden">
+            <div class="page-title">
+                🗺️ Bản đồ khách hàng
+            </div>
+            <div class="card">
+                <div id="map"></div>
+            </div>
+        </section>
+    </main>
 </div>
-<!-- APP JS -->
 <script src="app.js"></script>
 </body>
 </html>
