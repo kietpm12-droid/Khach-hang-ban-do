@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Khách Hàng Bản Đồ</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main class="container">
+    <section id="loginView" class="card">
+      <h1>📍 Khách Hàng Bản Đồ</h1>
+      <p class="muted">Đăng nhập để quản lý dữ liệu khách hàng dùng chung.</p>
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Mật khẩu">
+      <button id="loginBtn">Đăng nhập</button>
+      <p id="loginMsg" class="error"></p>
+    </section>
+
+    <section id="appView" class="hidden">
+      <header class="topbar">
+        <div>
+          <h1>📍 Khách Hàng Bản Đồ</h1>
+          <div id="userEmail" class="muted"></div>
+        </div>
+        <button id="logoutBtn" class="secondary">Đăng xuất</button>
+      </header>
+
+      <section class="card">
+        <h2>Thêm khách hàng</h2>
+        <div class="grid">
+          <input id="name" placeholder="Họ và tên *">
+          <input id="phone" placeholder="Số điện thoại *">
+          <input id="cccd" placeholder="CCCD (nếu cần)">
+          <input id="address" placeholder="Địa chỉ">
+          <textarea id="note" placeholder="Ghi chú"></textarea>
+        </div>
+        <div class="actions">
+          <button id="gpsBtn">📍 Lấy vị trí GPS</button>
+          <span id="gpsStatus" class="muted"></span>
+          <button id="saveBtn">Lưu khách hàng</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="searchRow">
+          <input id="search" placeholder="Tìm theo tên, số điện thoại, địa chỉ...">
+          <button id="refreshBtn" class="secondary">Làm mới</button>
+        </div>
+        <div id="count" class="muted"></div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr>
+              <th>Họ tên</th><th>SĐT</th><th>Địa chỉ</th><th>GPS</th><th>Ghi chú</th><th>Ngày tạo</th>
+            </tr></thead>
+            <tbody id="customerRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
