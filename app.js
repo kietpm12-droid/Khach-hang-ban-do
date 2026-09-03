@@ -39,6 +39,23 @@ let markers = [];
    LOGIN
 ===================================================== */
 
+/* =====================================================
+   REMEMBER EMAIL
+===================================================== */
+
+const savedEmail =
+  localStorage.getItem("rememberEmail");
+
+if (savedEmail) {
+  $("email").value = savedEmail;
+  $("rememberLogin").checked = true;
+}
+
+
+/* =====================================================
+   INIT
+===================================================== */
+
 async function init() {
 
   const {
@@ -90,7 +107,21 @@ $("loginBtn").addEventListener(
       $("email").value.trim();
 
     const password =
-      $("password").value;
+  $("password").value;
+
+const rememberLogin =
+  $("rememberLogin").checked;
+
+if (rememberLogin) {
+  localStorage.setItem(
+    "rememberEmail",
+    email
+  );
+} else {
+  localStorage.removeItem(
+    "rememberEmail"
+  );
+}
 
     $("loginMsg").textContent =
       "Đang đăng nhập...";
