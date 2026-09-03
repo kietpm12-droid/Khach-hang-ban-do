@@ -3,63 +3,300 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <title>Khách Hàng Bản Đồ</title>
+
   <link rel="stylesheet" href="style.css">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
-  <main class="container">
-    <section id="loginView" class="card">
-      <h1>📍 Khách Hàng Bản Đồ</h1>
-      <p class="muted">Đăng nhập để quản lý dữ liệu khách hàng dùng chung.</p>
-      <input id="email" type="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Mật khẩu">
-      <button id="loginBtn">Đăng nhập</button>
-      <p id="loginMsg" class="error"></p>
-    </section>
 
-    <section id="appView" class="hidden">
-      <header class="topbar">
-        <div>
-          <h1>📍 Khách Hàng Bản Đồ</h1>
-          <div id="userEmail" class="muted"></div>
-        </div>
-        <button id="logoutBtn" class="secondary">Đăng xuất</button>
-      </header>
+<main class="container">
 
-      <section class="card">
-        <h2>Thêm khách hàng</h2>
-        <div class="grid">
-          <input id="name" placeholder="Họ và tên *">
-          <input id="phone" placeholder="Số điện thoại *">
-          <input id="cccd" placeholder="CCCD (nếu cần)">
-          <input id="address" placeholder="Địa chỉ">
-          <textarea id="note" placeholder="Ghi chú"></textarea>
+  <!-- ==================== ĐĂNG NHẬP ==================== -->
+
+  <section id="loginView" class="card">
+
+    <h1>📍 Khách Hàng Bản Đồ</h1>
+
+    <p class="muted">
+      Đăng nhập để quản lý dữ liệu khách hàng dùng chung.
+    </p>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="Email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="Mật khẩu"
+    >
+
+    <button id="loginBtn">
+      🔐 Đăng nhập
+    </button>
+
+    <p id="loginMsg" class="error"></p>
+
+  </section>
+
+
+  <!-- ==================== ỨNG DỤNG ==================== -->
+
+  <section id="appView" class="hidden">
+
+    <header class="topbar">
+
+      <div>
+        <h1>📍 Khách Hàng Bản Đồ</h1>
+
+        <div
+          id="userEmail"
+          class="muted">
         </div>
+      </div>
+
+      <button
+        id="logoutBtn"
+        class="secondary">
+        Đăng xuất
+      </button>
+
+    </header>
+
+
+    <!-- ==================== THÊM KHÁCH HÀNG ==================== -->
+
+    <section class="card">
+
+      <h2>➕ Thêm khách hàng</h2>
+
+      <div class="grid">
+
+        <input
+          id="name"
+          placeholder="Họ và tên *"
+        >
+
+        <input
+          id="address"
+          placeholder="Địa chỉ"
+        >
+
+        <textarea
+          id="note"
+          placeholder="Ghi chú">
+        </textarea>
+
+      </div>
+
+
+      <!-- ==================== GPS ==================== -->
+
+      <div class="actions">
+
+        <button id="gpsBtn">
+          📍 Lấy vị trí GPS
+        </button>
+
+        <span
+          id="gpsStatus"
+          class="muted">
+        </span>
+
+      </div>
+
+
+      <!-- ==================== ẢNH NHÀ ==================== -->
+
+      <div class="cameraBox">
+
+        <h3>🏠 Ảnh nhà khách</h3>
+
         <div class="actions">
-          <button id="gpsBtn">📍 Lấy vị trí GPS</button>
-          <span id="gpsStatus" class="muted"></span>
-          <button id="saveBtn">Lưu khách hàng</button>
-        </div>
-      </section>
 
-      <section class="card">
-        <div class="searchRow">
-          <input id="search" placeholder="Tìm theo tên, số điện thoại, địa chỉ...">
-          <button id="refreshBtn" class="secondary">Làm mới</button>
+          <!-- CHỤP ẢNH -->
+          <button
+            type="button"
+            id="cameraBtn">
+            📷 Chụp ảnh
+          </button>
+
+
+          <!-- CHỌN ẢNH -->
+          <label
+            for="housePhoto"
+            class="button">
+            🖼️ Chọn ảnh
+          </label>
+
+          <input
+            id="housePhoto"
+            type="file"
+            accept="image/*"
+            style="display:none;"
+          >
+
         </div>
-        <div id="count" class="muted"></div>
-        <div class="tableWrap">
-          <table>
-            <thead><tr>
-              <th>Họ tên</th><th>SĐT</th><th>Địa chỉ</th><th>GPS</th><th>Ghi chú</th><th>Ngày tạo</th>
-            </tr></thead>
-            <tbody id="customerRows"></tbody>
-          </table>
+
+
+        <!-- CAMERA -->
+        <div
+          id="cameraArea"
+          class="hidden">
+
+          <video
+            id="camera"
+            autoplay
+            playsinline
+            style="
+              width:100%;
+              max-width:500px;
+              border-radius:10px;
+              margin-top:10px;
+            ">
+          </video>
+
+          <div class="actions">
+
+            <button
+              type="button"
+              id="takePhotoBtn">
+              📸 Chụp
+            </button>
+
+            <button
+              type="button"
+              id="closeCameraBtn"
+              class="secondary">
+              ❌ Đóng camera
+            </button>
+
+          </div>
+
         </div>
-      </section>
+
+
+        <!-- CANVAS ẨN -->
+        <canvas
+          id="photoCanvas"
+          style="display:none;">
+        </canvas>
+
+
+        <!-- XEM TRƯỚC ẢNH -->
+        <div>
+
+          <img
+            id="photoPreview"
+            class="hidden"
+            alt="Ảnh nhà khách"
+            style="
+              width:100%;
+              max-width:500px;
+              margin-top:10px;
+              border-radius:10px;
+            "
+          >
+
+        </div>
+
+
+        <p
+          id="photoStatus"
+          class="muted">
+        </p>
+
+      </div>
+
+
+      <!-- ==================== LƯU ==================== -->
+
+      <div class="actions">
+
+        <button id="saveBtn">
+          💾 Lưu khách hàng
+        </button>
+
+      </div>
+
     </section>
-  </main>
-  <script src="app.js"></script>
+
+
+    <!-- ==================== DANH SÁCH KHÁCH HÀNG ==================== -->
+
+    <section class="card">
+
+      <div class="searchRow">
+
+        <input
+          id="search"
+          placeholder="Tìm theo tên, địa chỉ, ghi chú..."
+        >
+
+        <button
+          id="refreshBtn"
+          class="secondary">
+          🔄 Làm mới
+        </button>
+
+      </div>
+
+
+      <div
+        id="count"
+        class="muted">
+      </div>
+
+
+      <div class="tableWrap">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>Họ tên</th>
+
+              <th>Địa chỉ</th>
+
+              <th>GPS</th>
+
+              <th>Ảnh nhà</th>
+
+              <th>Ghi chú</th>
+
+              <th>Ngày tạo</th>
+
+              <th>Thao tác</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody id="customerRows"></tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </section>
+
+</main>
+
+
+<!-- ==================== JAVASCRIPT ==================== -->
+
+<script src="app.js"></script>
+
 </body>
 </html>
