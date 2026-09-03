@@ -1,532 +1,637 @@
+// =====================================================
+// KHÁCH HÀNG BẢN ĐỒ - APP.JS
+// =====================================================
+
 const SUPABASE_URL = "https://yxzjddriuglqwtzxmgbi.supabase.co";
-const SUPABASE_ANON_KEY =
+
+const SUPABASE_KEY =
   "sb_publishable_QbGR8Dme3YIyDL1aceUIYA_Efyf65Lf";
 
-const sb = supabase.createClient(
+
+// =====================================================
+// SUPABASE
+// =====================================================
+
+let db = null;
+
+if (typeof supabase === "undefined") {
+
+  document.body.innerHTML = `
+    <div style="
+      padding:30px;
+      font-family:Arial;
+      text-align:center;
+    ">
+      <h2>❌ Không tải được Supabase</h2>
+      <p>Vui lòng kiểm tra kết nối mạng rồi tải lại trang.</p>
+    </div>
+  `;
+
+  throw new Error("Supabase CDN chưa tải");
+
+}
+
+db = supabase.createClient(
   SUPABASE_URL,
-  SUPABASE_ANON_KEY
+  SUPABASE_KEY
 );
 
-const $ = (id) => document.getElementById(id);
 
-let customers = [];
-let latitude = null;
-let longitude = null;
-let photoData = null;
-let cameraStream = null;
+// =====================================================
+// BIẾN
+// =====================================================
+
+let currentUser = null;
+
 let editingCustomerId = null;
 
+let latitude = null;
+let longitude = null;
+
+let photoData = null;
+
+let customers = [];
+
 let map = null;
-let markers = [];
+
+let markersLayer = null;
 
 
-// ================= START =================
+// =====================================================
+// DOM
+// =====================================================
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ APP JS đã chạy");
-  init();
-});
+const loginView = document.getElementById("loginView");
+const appView = document.getElementById("appView");
+
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+
+const rememberLogin =
+  document.getElementById("rememberLogin");
+
+const loginBtn =
+  document.getElementById("loginBtn");
+
+const loginMsg =
+  document.getElementById("loginMsg");
+
+const logoutBtn =
+  document.getElementById("logoutBtn");
+
+const menuLogout =
+  document.getElementById("menuLogout");
+
+const menuBtn =
+  document.getElementById("menuBtn");
+
+const closeMenuBtn =
+  document.getElementById("closeMenuBtn");
+
+const menuOverlay =
+  document.getElementById("menuOverlay");
+
+const sideMenu =
+  document.getElementById("sideMenu");
+
+const menuEmail =
+  document.getElementById("menuEmail");
+
+const mainView =
+  document.getElementById("mainView");
+
+const customersView =
+  document.getElementById("customersView");
+
+const mapView =
+  document.getElementById("mapView");
+
+const menuAdd =
+  document.getElementById("menuAdd");
+
+const menuCustomers =
+  document.getElementById("menuCustomers");
+
+const menuMap =
+  document.getElementById("menuMap");
+
+const backFromCustomers =
+  document.getElementById("backFromCustomers");
+
+const backFromMap =
+  document.getElementById("backFromMap");
+
+const nameInput =
+  document.getElementById("name");
+
+const addressInput =
+  document.getElementById("address");
+
+const noteInput =
+  document.getElementById("note");
+
+const gpsBtn =
+  document.getElementById("gpsBtn");
+
+const gpsStatus =
+  document.getElementById("gpsStatus");
+
+const cameraBtn =
+  document.getElementById("cameraBtn");
+
+const cameraInput =
+  document.getElementById("cameraInput");
+
+const photoPreview =
+  document.getElementById("photoPreview");
+
+const photoStatus =
+  document.getElementById("photoStatus");
+
+const saveBtn =
+  document.getElementById("saveBtn");
+
+const saveStatus =
+  document.getElementById("saveStatus");
+
+const customerList =
+  document.getElementById("customerList");
+
+const searchInput =
+  document.getElementById("search");
+
+const count =
+  document.getElementById("count");
+
+const mapCount =
+  document.getElementById("mapCount");
+
+const myLocationBtn =
+  document.getElementById("myLocationBtn");
+
+const formTitle =
+  document.getElementById("formTitle");
 
 
-// ================= INIT =================
+// =====================================================
+// KHỞI ĐỘNG
+// =====================================================
+
+document.addEventListener("DOMContentLoaded", init);
+
 
 async function init() {
 
+  const savedEmail =
+    localStorage.getItem("rememberEmail");
+
+  if (savedEmail) {
+
+    emailInput.value = savedEmail;
+
+    rememberLogin.checked = true;
+
+  }
+
   setupEvents();
 
-  const savedEmail = localStorage.getItem("rememberEmail");
-
-  if (savedEmail && $("email")) {
-    $("email").value = savedEmail;
-  }
-
-  const { data, error } = await sb.auth.getSession();
-
-  if (error) {
-    console.error("Session error:", error);
-    showLogin();
-    return;
-  }
-
-  if (data && data.session) {
-    await showApp(data.session);
-  } else {
-    showLogin();
-  }
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-
-    console.log("Auth event:", event);
-
-    if (session) {
-      await showApp(session);
-    } else {
-      showLogin();
+  const {
+    data: {
+      session
     }
+  } = await db.auth.getSession();
 
-  });
+  if (session && session.user) {
+
+    currentUser = session.user;
+
+    showApp();
+
+  } else {
+
+    showLogin();
+
+  }
+
 }
 
 
-// ================= VIEW =================
-
-function showLogin() {
-
-  const loginView = $("loginView");
-  const appView = $("appView");
-
-  if (loginView) {
-    loginView.classList.remove("hidden");
-    loginView.style.display = "";
-  }
-
-  if (appView) {
-    appView.classList.add("hidden");
-    appView.style.display = "none";
-  }
-}
-
-
-async function showApp(session) {
-
-  const loginView = $("loginView");
-  const appView = $("appView");
-
-  if (loginView) {
-    loginView.classList.add("hidden");
-    loginView.style.display = "none";
-  }
-
-  if (appView) {
-    appView.classList.remove("hidden");
-    appView.style.display = "";
-  }
-
-  if ($("menuEmail") && session?.user) {
-    $("menuEmail").textContent = session.user.email || "";
-  }
-
-  await loadCustomers();
-
-  showMain();
-}
-
-
-// ================= EVENTS =================
+// =====================================================
+// EVENTS
+// =====================================================
 
 function setupEvents() {
 
-  // Login
-  const loginBtn = $("loginBtn");
+  loginBtn.addEventListener(
+    "click",
+    login
+  );
 
-  if (loginBtn) {
-    loginBtn.addEventListener("click", login);
-  }
+  passwordInput.addEventListener(
+    "keydown",
+    function(e) {
 
+      if (e.key === "Enter") {
+        login();
+      }
 
-  // Logout
-  const logoutBtn = $("logoutBtn");
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", logout);
-  }
-
-
-  const menuLogout = $("menuLogout");
-
-  if (menuLogout) {
-    menuLogout.addEventListener("click", logout);
-  }
+    }
+  );
 
 
-  // Menu
-  const menuBtn = $("menuBtn");
+  logoutBtn.addEventListener(
+    "click",
+    logout
+  );
 
-  if (menuBtn) {
-    menuBtn.addEventListener("click", openMenu);
-  }
-
-
-  const closeMenuBtn = $("closeMenuBtn");
-
-  if (closeMenuBtn) {
-    closeMenuBtn.addEventListener("click", closeMenu);
-  }
+  menuLogout.addEventListener(
+    "click",
+    logout
+  );
 
 
-  const menuOverlay = $("menuOverlay");
+  menuBtn.addEventListener(
+    "click",
+    openMenu
+  );
 
-  if (menuOverlay) {
-    menuOverlay.addEventListener("click", closeMenu);
-  }
+  closeMenuBtn.addEventListener(
+    "click",
+    closeMenu
+  );
+
+  menuOverlay.addEventListener(
+    "click",
+    closeMenu
+  );
 
 
-  // Menu Add
-  const menuAdd = $("menuAdd");
+  menuAdd.addEventListener(
+    "click",
+    () => {
 
-  if (menuAdd) {
-    menuAdd.addEventListener("click", () => {
       closeMenu();
-      showMain();
-    });
-  }
+
+      showAddPage();
+
+    }
+  );
 
 
-  // Menu Customers
-  const menuCustomers = $("menuCustomers");
+  menuCustomers.addEventListener(
+    "click",
+    async () => {
 
-  if (menuCustomers) {
-    menuCustomers.addEventListener("click", () => {
       closeMenu();
-      showCustomers();
-    });
-  }
+
+      await showCustomersPage();
+
+    }
+  );
 
 
-  // Menu Map
-  const menuMap = $("menuMap");
+  menuMap.addEventListener(
+    "click",
+    async () => {
 
-  if (menuMap) {
-    menuMap.addEventListener("click", () => {
       closeMenu();
-      showMap();
-    });
-  }
+
+      await showMapPage();
+
+    }
+  );
 
 
-  // Back
-  const backCustomers = $("backFromCustomers");
-
-  if (backCustomers) {
-    backCustomers.addEventListener("click", showMain);
-  }
+  backFromCustomers.addEventListener(
+    "click",
+    showAddPage
+  );
 
 
-  const backMap = $("backFromMap");
-
-  if (backMap) {
-    backMap.addEventListener("click", showMain);
-  }
-
-
-  // GPS
-  const gpsBtn = $("gpsBtn");
-
-  if (gpsBtn) {
-    gpsBtn.addEventListener("click", getGPS);
-  }
+  backFromMap.addEventListener(
+    "click",
+    showAddPage
+  );
 
 
-  // Camera
-  const cameraBtn = $("cameraBtn");
-
-  if (cameraBtn) {
-    cameraBtn.addEventListener("click", openCamera);
-  }
+  gpsBtn.addEventListener(
+    "click",
+    getGPS
+  );
 
 
-  const takePhotoBtn = $("takePhotoBtn");
+  // CAMERA ĐIỆN THOẠI
 
-  if (takePhotoBtn) {
-    takePhotoBtn.addEventListener("click", takePhoto);
-  }
+  cameraBtn.addEventListener(
+    "click",
+    function() {
 
+      cameraInput.click();
 
-  const closeCameraBtn = $("closeCameraBtn");
-
-  if (closeCameraBtn) {
-    closeCameraBtn.addEventListener("click", closeCamera);
-  }
+    }
+  );
 
 
-  // Save
-  const saveBtn = $("saveBtn");
-
-  if (saveBtn) {
-    saveBtn.addEventListener("click", saveCustomer);
-  }
+  cameraInput.addEventListener(
+    "change",
+    handlePhoto
+  );
 
 
-  // Search
-  const search = $("search");
-
-  if (search) {
-    search.addEventListener("input", renderCustomers);
-  }
+  saveBtn.addEventListener(
+    "click",
+    saveCustomer
+  );
 
 
-  // My location
-  const myLocationBtn = $("myLocationBtn");
+  searchInput.addEventListener(
+    "input",
+    renderCustomers
+  );
 
-  if (myLocationBtn) {
-    myLocationBtn.addEventListener(
-      "click",
-      showMyLocation
-    );
-  }
+
+  myLocationBtn.addEventListener(
+    "click",
+    goMyLocation
+  );
+
+
+  db.auth.onAuthStateChange(
+    function(event, session) {
+
+      if (
+        event === "SIGNED_OUT" ||
+        !session
+      ) {
+
+        currentUser = null;
+
+        showLogin();
+
+      }
+
+    }
+  );
+
 }
 
 
-// ================= LOGIN =================
+// =====================================================
+// LOGIN
+// =====================================================
 
 async function login() {
 
-  const email = $("email")?.value.trim() || "";
-  const password = $("password")?.value || "";
+  const email =
+    emailInput.value.trim();
 
-  const loginMsg = $("loginMsg");
-  const loginBtn = $("loginBtn");
+  const password =
+    passwordInput.value;
+
+  loginMsg.textContent = "";
 
   if (!email || !password) {
 
-    if (loginMsg) {
-      loginMsg.textContent =
-        "❌ Vui lòng nhập email và mật khẩu";
-    }
+    loginMsg.textContent =
+      "❌ Vui lòng nhập email và mật khẩu.";
 
     return;
+
   }
 
+  loginBtn.disabled = true;
 
-  if (loginMsg) {
-    loginMsg.textContent =
-      "⏳ Đang đăng nhập...";
-  }
-
-
-  if (loginBtn) {
-    loginBtn.disabled = true;
-    loginBtn.textContent =
-      "⏳ Đang đăng nhập...";
-  }
+  loginBtn.textContent =
+    "⏳ Đang đăng nhập...";
 
 
   try {
 
-    const { data, error } =
-      await sb.auth.signInWithPassword({
-        email,
-        password
-      });
+    const {
+      data,
+      error
+    } = await db.auth.signInWithPassword({
+
+      email,
+      password
+
+    });
 
 
     if (error) {
 
-      console.error("LOGIN ERROR:", error);
+      throw error;
 
-      if (loginMsg) {
-        loginMsg.textContent =
-          "❌ " + error.message;
-      }
-
-      return;
     }
 
 
-    if (data?.session) {
-
-      const remember =
-        $("rememberLogin")?.checked;
-
-      if (remember) {
-        localStorage.setItem(
-          "rememberEmail",
-          email
-        );
-      } else {
-        localStorage.removeItem(
-          "rememberEmail"
-        );
-      }
+    currentUser = data.user;
 
 
-      if (loginMsg) {
-        loginMsg.textContent =
-          "✅ Đăng nhập thành công";
-      }
+    if (rememberLogin.checked) {
 
-      await showApp(data.session);
+      localStorage.setItem(
+        "rememberEmail",
+        email
+      );
+
+    } else {
+
+      localStorage.removeItem(
+        "rememberEmail"
+      );
+
     }
+
+
+    loginMsg.textContent = "";
+
+    showApp();
+
 
   } catch (error) {
 
     console.error(error);
 
-    if (loginMsg) {
-      loginMsg.textContent =
-        "❌ Có lỗi: " + error.message;
-    }
+    loginMsg.textContent =
+      "❌ " + (
+        error.message ||
+        "Đăng nhập thất bại"
+      );
 
   } finally {
 
-    if (loginBtn) {
-      loginBtn.disabled = false;
-      loginBtn.textContent =
-        "🔐 Đăng nhập";
-    }
+    loginBtn.disabled = false;
+
+    loginBtn.textContent =
+      "🔐 Đăng nhập";
+
   }
+
 }
 
 
-// ================= LOGOUT =================
+// =====================================================
+// LOGOUT
+// =====================================================
 
 async function logout() {
 
-  const { error } =
-    await sb.auth.signOut();
+  await db.auth.signOut();
 
-  if (error) {
-
-    alert(
-      "❌ Đăng xuất thất bại:\n" +
-      error.message
-    );
-
-    return;
-  }
+  currentUser = null;
 
   showLogin();
+
 }
 
 
-// ================= MENU =================
+// =====================================================
+// HIỂN THỊ LOGIN
+// =====================================================
+
+function showLogin() {
+
+  loginView.classList.remove("hidden");
+
+  loginView.style.display = "flex";
+
+  appView.classList.add("hidden");
+
+  appView.style.display = "none";
+
+}
+
+
+// =====================================================
+// HIỂN THỊ APP
+// =====================================================
+
+async function showApp() {
+
+  loginView.classList.add("hidden");
+
+  loginView.style.display = "none";
+
+  appView.classList.remove("hidden");
+
+  appView.style.display = "block";
+
+
+  if (currentUser) {
+
+    menuEmail.textContent =
+      currentUser.email || "";
+
+  }
+
+
+  showAddPage();
+
+}
+
+
+// =====================================================
+// MENU
+// =====================================================
 
 function openMenu() {
 
-  const sideMenu = $("sideMenu");
-  const overlay = $("menuOverlay");
+  sideMenu.classList.add("open");
 
-  if (sideMenu) {
-    sideMenu.classList.add("open");
-  }
+  menuOverlay.classList.remove("hidden");
 
-  if (overlay) {
-    overlay.classList.remove("hidden");
-    overlay.style.display = "block";
-  }
 }
 
 
 function closeMenu() {
 
-  const sideMenu = $("sideMenu");
-  const overlay = $("menuOverlay");
+  sideMenu.classList.remove("open");
 
-  if (sideMenu) {
-    sideMenu.classList.remove("open");
-  }
+  menuOverlay.classList.add("hidden");
 
-  if (overlay) {
-    overlay.classList.add("hidden");
-    overlay.style.display = "none";
-  }
 }
 
 
-// ================= PAGE =================
+// =====================================================
+// TRANG THÊM
+// =====================================================
 
-function hideAllViews() {
+function showAddPage() {
 
-  const main = $("mainView");
-  const customersView = $("customersView");
-  const mapView = $("mapView");
+  mainView.classList.remove("hidden");
 
-  if (main) {
-    main.classList.add("hidden");
-    main.style.display = "none";
-  }
+  customersView.classList.add("hidden");
 
-  if (customersView) {
-    customersView.classList.add("hidden");
-    customersView.style.display = "none";
-  }
+  mapView.classList.add("hidden");
 
-  if (mapView) {
-    mapView.classList.add("hidden");
-    mapView.style.display = "none";
-  }
 }
 
 
-function showMain() {
+// =====================================================
+// TRANG KHÁCH HÀNG
+// =====================================================
 
-  hideAllViews();
+async function showCustomersPage() {
 
-  const main = $("mainView");
+  mainView.classList.add("hidden");
 
-  if (main) {
-    main.classList.remove("hidden");
-    main.style.display = "";
-  }
+  customersView.classList.remove("hidden");
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
+  mapView.classList.add("hidden");
+
+
+  await loadCustomers();
+
 }
 
 
-function showCustomers() {
+// =====================================================
+// TRANG BẢN ĐỒ
+// =====================================================
 
-  hideAllViews();
+async function showMapPage() {
 
-  const view = $("customersView");
+  mainView.classList.add("hidden");
 
-  if (view) {
-    view.classList.remove("hidden");
-    view.style.display = "";
-  }
+  customersView.classList.add("hidden");
 
-  renderCustomers();
+  mapView.classList.remove("hidden");
+
+
+  await loadCustomers();
+
+  setTimeout(
+    initMap,
+    100
+  );
+
 }
 
 
-function showMap() {
-
-  hideAllViews();
-
-  const view = $("mapView");
-
-  if (view) {
-    view.classList.remove("hidden");
-    view.style.display = "";
-  }
-
-  setTimeout(() => {
-
-    initMap();
-    loadMarkers();
-
-  }, 300);
-}
-
-
-// ================= GPS =================
+// =====================================================
+// GPS
+// =====================================================
 
 function getGPS() {
 
-  const status = $("gpsStatus");
-
   if (!navigator.geolocation) {
 
-    if (status) {
-      status.textContent =
-        "❌ Thiết bị không hỗ trợ GPS";
-    }
+    gpsStatus.textContent =
+      "❌ Thiết bị không hỗ trợ GPS.";
 
     return;
+
   }
 
 
-  if (status) {
-    status.textContent =
-      "📍 Đang lấy vị trí...";
-  }
+  gpsStatus.textContent =
+    "📍 Đang lấy vị trí...";
 
 
   navigator.geolocation.getCurrentPosition(
 
-    (position) => {
+    function(position) {
 
       latitude =
         position.coords.latitude;
@@ -535,296 +640,194 @@ function getGPS() {
         position.coords.longitude;
 
 
-      if (status) {
+      gpsStatus.textContent =
+        `✅ Đã lấy vị trí: ${
+          latitude.toFixed(6)
+        }, ${
+          longitude.toFixed(6)
+        }`;
 
-        status.textContent =
-          `✅ GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-      }
     },
 
-    (error) => {
+
+    function(error) {
 
       console.error(error);
 
-      if (!status) return;
+      gpsStatus.textContent =
+        "❌ Không lấy được vị trí. Hãy cho phép trình duyệt sử dụng vị trí.";
 
-      if (error.code === 1) {
-
-        status.textContent =
-          "❌ Bạn chưa cho phép truy cập vị trí";
-
-      } else {
-
-        status.textContent =
-          "❌ Không lấy được vị trí";
-      }
     },
+
 
     {
       enableHighAccuracy: true,
       timeout: 15000,
       maximumAge: 0
     }
+
   );
+
 }
 
 
-// ================= CAMERA =================
+// =====================================================
+// CAMERA ĐIỆN THOẠI
+// =====================================================
 
-async function openCamera() {
+function handlePhoto(event) {
 
-  const cameraArea = $("cameraArea");
-  const camera = $("camera");
-  const status = $("photoStatus");
+  const file =
+    event.target.files[0];
 
-
-  if (
-    !navigator.mediaDevices ||
-    !navigator.mediaDevices.getUserMedia
-  ) {
-
-    if (status) {
-      status.textContent =
-        "❌ Trình duyệt không hỗ trợ camera";
-    }
-
-    return;
-  }
+  if (!file) return;
 
 
-  try {
-
-    cameraStream =
-      await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: {
-            ideal: "environment"
-          }
-        },
-        audio: false
-      });
+  photoStatus.textContent =
+    "⏳ Đang xử lý ảnh...";
 
 
-    if (camera) {
-
-      camera.srcObject =
-        cameraStream;
-
-      await camera.play();
-    }
+  const reader =
+    new FileReader();
 
 
-    if (cameraArea) {
+  reader.onload = function(e) {
 
-      cameraArea.classList.remove("hidden");
-      cameraArea.style.display = "";
-    }
-
-
-    if (status) {
-      status.textContent =
-        "📷 Camera đã mở";
-    }
-
-  } catch (error) {
-
-    console.error(error);
-
-    if (status) {
-      status.textContent =
-        "❌ Không thể mở camera: " +
-        error.message;
-    }
-  }
-}
+    photoData =
+      e.target.result;
 
 
-function takePhoto() {
-
-  const camera = $("camera");
-  const canvas = $("photoCanvas");
-  const preview = $("photoPreview");
-  const status = $("photoStatus");
+    photoPreview.src =
+      photoData;
 
 
-  if (!camera || !canvas) return;
-
-
-  const width =
-    camera.videoWidth;
-
-  const height =
-    camera.videoHeight;
-
-
-  if (!width || !height) {
-
-    if (status) {
-      status.textContent =
-        "❌ Camera chưa sẵn sàng";
-    }
-
-    return;
-  }
-
-
-  canvas.width = width;
-  canvas.height = height;
-
-
-  const ctx =
-    canvas.getContext("2d");
-
-  ctx.drawImage(
-    camera,
-    0,
-    0,
-    width,
-    height
-  );
-
-
-  photoData =
-    canvas.toDataURL(
-      "image/jpeg",
-      0.75
+    photoPreview.classList.remove(
+      "hidden"
     );
 
 
-  if (preview) {
+    photoStatus.textContent =
+      "✅ Đã chụp ảnh nhà khách.";
 
-    preview.src = photoData;
-
-    preview.classList.remove("hidden");
-    preview.style.display = "";
-  }
+  };
 
 
-  if (status) {
-    status.textContent =
-      "✅ Đã chụp ảnh";
-  }
+  reader.onerror = function() {
+
+    photoStatus.textContent =
+      "❌ Không đọc được ảnh.";
+
+  };
 
 
-  closeCamera();
+  reader.readAsDataURL(file);
+
 }
 
 
-function closeCamera() {
-
-  if (cameraStream) {
-
-    cameraStream
-      .getTracks()
-      .forEach(track =>
-        track.stop()
-      );
-
-    cameraStream = null;
-  }
-
-
-  const cameraArea =
-    $("cameraArea");
-
-  if (cameraArea) {
-
-    cameraArea.classList.add("hidden");
-    cameraArea.style.display = "none";
-  }
-}
-
-
-// ================= SAVE =================
+// =====================================================
+// LƯU KHÁCH HÀNG
+// =====================================================
 
 async function saveCustomer() {
 
+  if (!currentUser) {
+
+    saveStatus.textContent =
+      "❌ Bạn chưa đăng nhập.";
+
+    return;
+
+  }
+
+
   const name =
-    $("name")?.value.trim() || "";
+    nameInput.value.trim();
 
   const address =
-    $("address")?.value.trim() || "";
+    addressInput.value.trim();
 
   const note =
-    $("note")?.value.trim() || "";
-
-  const status =
-    $("saveStatus");
-
-  const saveBtn =
-    $("saveBtn");
+    noteInput.value.trim();
 
 
   if (!name) {
 
-    if (status) {
-      status.textContent =
-        "❌ Vui lòng nhập họ tên khách hàng";
-    }
+    saveStatus.textContent =
+      "❌ Vui lòng nhập họ và tên.";
+
+    nameInput.focus();
 
     return;
+
   }
 
 
-  const {
-    data: { user },
-    error: userError
-  } = await sb.auth.getUser();
+  if (
+    latitude === null ||
+    longitude === null
+  ) {
 
-
-  if (userError || !user) {
-
-    if (status) {
-      status.textContent =
-        "❌ Phiên đăng nhập đã hết";
-    }
+    saveStatus.textContent =
+      "❌ Vui lòng lấy vị trí GPS.";
 
     return;
+
   }
 
 
-  if (saveBtn) {
+  saveBtn.disabled = true;
 
-    saveBtn.disabled = true;
+  saveBtn.textContent =
+    "⏳ Đang lưu...";
 
-    saveBtn.textContent =
-      editingCustomerId
-        ? "⏳ Đang cập nhật..."
-        : "⏳ Đang lưu...";
-  }
-
-
-  const customerData = {
-
-    name: name,
-
-    address:
-      address || null,
-
-    note:
-      note || null,
-
-    latitude:
-      latitude,
-
-    longitude:
-      longitude,
-
-    photo_url:
-      photoData
-  };
+  saveStatus.textContent = "";
 
 
   try {
 
-    let error = null;
+    const customerData = {
+
+      user_id: currentUser.id,
+
+      name: name,
+
+      address: address,
+
+      note: note,
+
+      latitude: latitude,
+
+      longitude: longitude,
+
+      photo_url: photoData
+
+    };
 
 
-    // UPDATE
-    if (editingCustomerId) {
+    let result;
 
-      const result =
-        await sb
+
+    // =========================
+    // THÊM
+    // =========================
+
+    if (!editingCustomerId) {
+
+      result =
+        await db
+          .from("customers")
+          .insert(customerData);
+
+
+    // =========================
+    // SỬA
+    // =========================
+
+    } else {
+
+      result =
+        await db
           .from("customers")
           .update(customerData)
           .eq(
@@ -833,868 +836,750 @@ async function saveCustomer() {
           )
           .eq(
             "user_id",
-            user.id
+            currentUser.id
           );
 
-      error =
-        result.error;
-
-    }
-
-    // INSERT
-    else {
-
-      const result =
-        await sb
-          .from("customers")
-          .insert({
-            ...customerData,
-            user_id: user.id
-          });
-
-      error =
-        result.error;
     }
 
 
-    if (error) {
+    if (result.error) {
 
-      console.error(
-        "SAVE ERROR:",
-        error
-      );
+      throw result.error;
 
-      if (status) {
-        status.textContent =
-          "❌ Lưu thất bại: " +
-          error.message;
-      }
-
-      return;
     }
 
 
-    if (status) {
-
-      status.textContent =
-        editingCustomerId
-          ? "✅ Đã cập nhật khách hàng"
-          : "✅ Đã lưu khách hàng";
-    }
+    saveStatus.textContent =
+      editingCustomerId
+        ? "✅ Đã cập nhật khách hàng."
+        : "✅ Đã lưu khách hàng.";
 
 
-    resetCustomerForm();
+    resetForm();
 
-    await loadCustomers();
 
   } catch (error) {
 
     console.error(error);
 
-    if (status) {
-      status.textContent =
-        "❌ Có lỗi: " +
-        error.message;
-    }
+    saveStatus.textContent =
+      "❌ Lưu thất bại: " +
+      (
+        error.message ||
+        "Lỗi không xác định"
+      );
 
   } finally {
 
-    if (saveBtn) {
+    saveBtn.disabled = false;
 
-      saveBtn.disabled = false;
+    saveBtn.textContent =
+      "💾 Lưu khách hàng";
 
-      saveBtn.textContent =
-        "💾 Lưu khách hàng";
-    }
   }
+
 }
 
 
-// ================= RESET FORM =================
+// =====================================================
+// RESET FORM
+// =====================================================
 
-function resetCustomerForm() {
+function resetForm() {
 
-  if ($("name")) {
-    $("name").value = "";
-  }
+  editingCustomerId = null;
 
-  if ($("address")) {
-    $("address").value = "";
-  }
+  nameInput.value = "";
 
-  if ($("note")) {
-    $("note").value = "";
-  }
+  addressInput.value = "";
+
+  noteInput.value = "";
 
 
   latitude = null;
+
   longitude = null;
+
+
   photoData = null;
-  editingCustomerId = null;
 
 
-  if ($("gpsStatus")) {
-    $("gpsStatus").textContent = "";
-  }
+  photoPreview.src = "";
+
+  photoPreview.classList.add(
+    "hidden"
+  );
 
 
-  if ($("photoStatus")) {
-    $("photoStatus").textContent = "";
-  }
+  photoStatus.textContent = "";
+
+  gpsStatus.textContent = "";
 
 
-  if ($("photoPreview")) {
-
-    $("photoPreview").src = "";
-
-    $("photoPreview").classList.add("hidden");
-    $("photoPreview").style.display = "none";
-  }
+  cameraInput.value = "";
 
 
-  if ($("saveStatus")) {
-    $("saveStatus").textContent = "";
-  }
+  formTitle.textContent =
+    "Thêm khách hàng";
 
-
-  if ($("saveBtn")) {
-    $("saveBtn").textContent =
-      "💾 Lưu khách hàng";
-  }
 }
 
 
-// ================= LOAD CUSTOMERS =================
+// =====================================================
+// LOAD KHÁCH HÀNG
+// =====================================================
 
 async function loadCustomers() {
 
-  const {
-    data: { user },
-    error: userError
-  } = await sb.auth.getUser();
+  if (!currentUser) return;
 
 
-  if (userError || !user) {
-    return;
+  customerList.innerHTML =
+    "<p>⏳ Đang tải...</p>";
+
+
+  try {
+
+    const {
+      data,
+      error
+    } = await db
+      .from("customers")
+      .select("*")
+      .eq(
+        "user_id",
+        currentUser.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    customers =
+      data || [];
+
+
+    renderCustomers();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    customerList.innerHTML =
+      `<p style="color:red">
+        ❌ Không tải được dữ liệu.
+      </p>`;
+
   }
 
+}
 
-  const {
-    data,
-    error
-  } = await sb
-    .from("customers")
-    .select("*")
-    .eq(
-      "user_id",
-      user.id
-    )
-    .order(
-      "created_at",
-      {
-        ascending: false
+
+// =====================================================
+// RENDER KHÁCH HÀNG
+// =====================================================
+
+function renderCustomers() {
+
+  const keyword =
+    searchInput.value
+      .trim()
+      .toLowerCase();
+
+
+  let list =
+    customers.filter(
+      customer => {
+
+        return (
+
+          String(
+            customer.name || ""
+          )
+            .toLowerCase()
+            .includes(keyword)
+
+          ||
+
+          String(
+            customer.address || ""
+          )
+            .toLowerCase()
+            .includes(keyword)
+
+          ||
+
+          String(
+            customer.note || ""
+          )
+            .toLowerCase()
+            .includes(keyword)
+
+        );
+
       }
     );
 
 
-  if (error) {
+  count.textContent =
+    `${list.length} khách hàng`;
 
-    console.error(
-      "LOAD ERROR:",
-      error
-    );
+
+  if (!list.length) {
+
+    customerList.innerHTML =
+      "<p>Chưa có khách hàng.</p>";
 
     return;
+
   }
 
 
-  customers =
-    data || [];
+  customerList.innerHTML =
+    list
+      .map(
+        customer =>
+          customerCard(customer)
+      )
+      .join("");
 
-
-  renderCustomers();
-
-
-  if (map) {
-    loadMarkers();
-  }
 }
 
 
-// ================= CUSTOMER LIST =================
+// =====================================================
+// CARD KHÁCH HÀNG
+// =====================================================
 
-function renderCustomers() {
+function customerCard(customer) {
 
-  const list =
-    $("customerList");
-
-  const count =
-    $("count");
-
-  const search =
-    $("search");
-
-
-  if (!list) return;
-
-
-  const keyword =
-    search
-      ? search.value
-          .trim()
-          .toLowerCase()
+  const photo =
+    customer.photo_url
+      ? `
+        <img
+          src="${customer.photo_url}"
+          class="customer-photo"
+          onclick="showPhoto('${customer.photo_url}')"
+        >
+      `
       : "";
 
 
-  const filtered =
-    customers.filter(customer => {
+  return `
 
-      return (
+    <div class="customer-card">
 
-        String(
-          customer.name || ""
-        )
-          .toLowerCase()
-          .includes(keyword)
+      ${photo}
 
-        ||
+      <div class="customer-info">
 
-        String(
-          customer.address || ""
-        )
-          .toLowerCase()
-          .includes(keyword)
+        <h3>
+          ${escapeHTML(
+            customer.name || ""
+          )}
+        </h3>
 
-        ||
+        <p>
+          📍 ${
+            escapeHTML(
+              customer.address || "Chưa có địa chỉ"
+            )
+          }
+        </p>
 
-        String(
-          customer.note || ""
-        )
-          .toLowerCase()
-          .includes(keyword)
-      );
-    });
+        <p>
+          📝 ${
+            escapeHTML(
+              customer.note || "Không có ghi chú"
+            )
+          }
+        </p>
 
+        ${
+          customer.latitude !== null &&
+          customer.longitude !== null
+            ? `
+              <p>
+                🌐 ${
+                  Number(customer.latitude)
+                    .toFixed(6)
+                },
+                ${
+                  Number(customer.longitude)
+                    .toFixed(6)
+                }
+              </p>
+            `
+            : ""
+        }
 
-  if (count) {
-    count.textContent =
-      filtered.length +
-      " khách hàng";
-  }
-
-
-  if (!filtered.length) {
-
-    list.innerHTML =
-      `<div class="empty">
-        Chưa có khách hàng
-      </div>`;
-
-    return;
-  }
-
-
-  list.innerHTML =
-    filtered
-      .map(customer => {
-
-        const gps =
-          customer.latitude != null &&
-          customer.longitude != null;
+      </div>
 
 
-        const photo =
-          customer.photo_url
+      <div class="customer-actions">
+
+        <button
+          onclick="editCustomer('${customer.id}')"
+        >
+          ✏️ Sửa
+        </button>
+
+        <button
+          onclick="deleteCustomer('${customer.id}')"
+        >
+          🗑️ Xóa
+        </button>
+
+        ${
+          customer.latitude !== null &&
+          customer.longitude !== null
             ? `
               <button
-                onclick="showPhoto(${JSON.stringify(customer.photo_url)})">
-                📷 Xem ảnh
+                onclick="focusCustomer(
+                  ${customer.latitude},
+                  ${customer.longitude}
+                )"
+              >
+                🗺️ Bản đồ
               </button>
             `
-            : "";
+            : ""
+        }
 
+      </div>
 
-        return `
-          <div class="customer-card">
+    </div>
 
-            <div class="customer-name">
-              ${escapeHTML(customer.name)}
-            </div>
+  `;
 
-            <div>
-              📍 ${
-                escapeHTML(
-                  customer.address ||
-                  "Chưa có địa chỉ"
-                )
-              }
-            </div>
-
-            <div>
-              📝 ${
-                escapeHTML(
-                  customer.note ||
-                  "Không có ghi chú"
-                )
-              }
-            </div>
-
-            <div>
-              ${
-                gps
-                  ? "📍 Đã lưu GPS"
-                  : "⚠️ Chưa có GPS"
-              }
-            </div>
-
-            <div class="customer-actions">
-
-              ${
-                gps
-                  ? `
-                    <button
-                      onclick="focusCustomer(${customer.id})">
-                      🗺️ Xem bản đồ
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${photo}
-
-              <button
-                onclick="editCustomer(${customer.id})">
-                ✏️ Chỉnh sửa
-              </button>
-
-              <button
-                class="delete-btn"
-                onclick="deleteCustomer(${customer.id})">
-                🗑️ Xóa
-              </button>
-
-            </div>
-
-          </div>
-        `;
-      })
-      .join("");
 }
 
 
-// ================= EDIT =================
+// =====================================================
+// SỬA
+// =====================================================
 
-function editCustomer(id) {
+window.editCustomer =
+  async function(id) {
 
-  const customer =
-    customers.find(
-      item =>
-        Number(item.id) ===
-        Number(id)
-    );
-
-
-  if (!customer) {
-
-    alert(
-      "❌ Không tìm thấy khách hàng"
-    );
-
-    return;
-  }
+    const customer =
+      customers.find(
+        item =>
+          String(item.id) === String(id)
+      );
 
 
-  editingCustomerId =
-    customer.id;
+    if (!customer) return;
 
 
-  if ($("name")) {
-    $("name").value =
+    editingCustomerId =
+      customer.id;
+
+
+    nameInput.value =
       customer.name || "";
-  }
 
-
-  if ($("address")) {
-    $("address").value =
+    addressInput.value =
       customer.address || "";
-  }
 
-
-  if ($("note")) {
-    $("note").value =
+    noteInput.value =
       customer.note || "";
-  }
 
 
-  latitude =
-    customer.latitude != null
-      ? Number(customer.latitude)
-      : null;
+    latitude =
+      customer.latitude ?? null;
+
+    longitude =
+      customer.longitude ?? null;
 
 
-  longitude =
-    customer.longitude != null
-      ? Number(customer.longitude)
-      : null;
+    photoData =
+      customer.photo_url || null;
 
-
-  photoData =
-    customer.photo_url ||
-    null;
-
-
-  if ($("gpsStatus")) {
-
-    $("gpsStatus").textContent =
-      latitude != null &&
-      longitude != null
-
-        ? `✅ GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-
-        : "";
-  }
-
-
-  if ($("photoPreview")) {
 
     if (photoData) {
 
-      $("photoPreview").src =
+      photoPreview.src =
         photoData;
 
-      $("photoPreview").classList.remove("hidden");
-      $("photoPreview").style.display = "";
+      photoPreview.classList.remove(
+        "hidden"
+      );
+
+      photoStatus.textContent =
+        "✅ Đã có ảnh.";
 
     } else {
 
-      $("photoPreview").src = "";
+      photoPreview.src = "";
 
-      $("photoPreview").classList.add("hidden");
-      $("photoPreview").style.display = "none";
+      photoPreview.classList.add(
+        "hidden"
+      );
+
+      photoStatus.textContent = "";
+
     }
-  }
 
 
-  if ($("photoStatus")) {
+    if (
+      latitude !== null &&
+      longitude !== null
+    ) {
 
-    $("photoStatus").textContent =
-      photoData
-        ? "✅ Đã có ảnh"
-        : "";
-  }
+      gpsStatus.textContent =
+        `✅ Vị trí hiện tại: ${
+          Number(latitude).toFixed(6)
+        }, ${
+          Number(longitude).toFixed(6)
+        }`;
 
+    } else {
 
-  if ($("saveBtn")) {
+      gpsStatus.textContent = "";
 
-    $("saveBtn").textContent =
-      "💾 Cập nhật khách hàng";
-  }
-
-
-  showMain();
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
+    }
 
 
-// ================= DELETE =================
-
-async function deleteCustomer(id) {
-
-  const customer =
-    customers.find(
-      item =>
-        Number(item.id) ===
-        Number(id)
-    );
+    formTitle.textContent =
+      "Chỉnh sửa khách hàng";
 
 
-  if (!customer) {
+    saveStatus.textContent = "";
 
-    alert(
-      "❌ Không tìm thấy khách hàng"
-    );
+    showAddPage();
 
-    return;
-  }
+  };
 
 
-  const confirmed =
-    confirm(
-      `Bạn có chắc muốn xóa khách hàng "${customer.name}" không?`
-    );
+// =====================================================
+// XÓA
+// =====================================================
 
+window.deleteCustomer =
+  async function(id) {
 
-  if (!confirmed) return;
-
-
-  const {
-    data: { user },
-    error: userError
-  } = await sb.auth.getUser();
-
-
-  if (userError || !user) {
-
-    alert(
-      "❌ Phiên đăng nhập đã hết"
-    );
-
-    return;
-  }
-
-
-  const { error } =
-    await sb
-      .from("customers")
-      .delete()
-      .eq(
-        "id",
-        id
-      )
-      .eq(
-        "user_id",
-        user.id
+    const ok =
+      confirm(
+        "Bạn có chắc muốn xóa khách hàng này?"
       );
 
 
-  if (error) {
-
-    console.error(error);
-
-    alert(
-      "❌ Xóa thất bại:\n" +
-      error.message
-    );
-
-    return;
-  }
+    if (!ok) return;
 
 
-  customers =
-    customers.filter(
-      item =>
-        Number(item.id) !==
-        Number(id)
-    );
+    try {
+
+      const {
+        error
+      } = await db
+        .from("customers")
+        .delete()
+        .eq(
+          "id",
+          id
+        )
+        .eq(
+          "user_id",
+          currentUser.id
+        );
 
 
-  renderCustomers();
+      if (error) {
+
+        throw error;
+
+      }
 
 
-  if (map) {
-    loadMarkers();
-  }
+      await loadCustomers();
 
 
-  alert(
-    "✅ Đã xóa khách hàng"
-  );
-}
+    } catch (error) {
+
+      alert(
+        "❌ Xóa thất bại: " +
+        error.message
+      );
+
+    }
+
+  };
 
 
-// ================= MAP =================
+// =====================================================
+// MAP
+// =====================================================
 
 function initMap() {
 
-  const mapElement =
-    $("map");
+  if (!map) {
+
+    map =
+      L.map("map")
+        .setView(
+          [10.0452, 105.7469],
+          12
+        );
 
 
-  if (!mapElement) return;
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          "&copy; OpenStreetMap"
+      }
+    ).addTo(map);
 
 
-  if (map) {
+    markersLayer =
+      L.layerGroup().addTo(map);
 
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
-
-    return;
   }
 
 
-  map =
-    L.map("map")
-      .setView(
-        [10.0452, 105.7469],
-        13
-      );
+  markersLayer.clearLayers();
 
 
-  L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-      attribution:
-        "&copy; OpenStreetMap contributors"
-    }
-  ).addTo(map);
-
-
-  setTimeout(() => {
-    map.invalidateSize();
-  }, 200);
-}
-
-
-// ================= MARKERS =================
-
-function loadMarkers() {
-
-  if (!map) return;
-
-
-  markers.forEach(
-    marker =>
-      map.removeLayer(marker)
-  );
-
-
-  markers = [];
-
-
-  const validCustomers =
+  const locations =
     customers.filter(
-      customer =>
-        customer.latitude != null &&
-        customer.longitude != null
+      c =>
+        c.latitude !== null &&
+        c.longitude !== null
     );
 
 
-  validCustomers.forEach(
+  mapCount.textContent =
+    `${locations.length} khách có vị trí`;
+
+
+  if (!locations.length) {
+
+    map.setView(
+      [10.0452, 105.7469],
+      12
+    );
+
+    return;
+
+  }
+
+
+  const bounds = [];
+
+
+  locations.forEach(
     customer => {
 
+      const lat =
+        Number(customer.latitude);
+
+      const lng =
+        Number(customer.longitude);
+
+
       const marker =
-        L.marker([
-          Number(customer.latitude),
-          Number(customer.longitude)
-        ])
-        .addTo(map);
+        L.marker(
+          [lat, lng]
+        ).addTo(
+          markersLayer
+        );
 
 
       marker.bindPopup(`
-        <strong>
-          ${escapeHTML(customer.name)}
-        </strong>
-        <br>
+        <b>${escapeHTML(
+          customer.name || ""
+        )}</b><br>
         ${escapeHTML(
           customer.address || ""
-        )}
-        <br>
-        ${escapeHTML(
-          customer.note || ""
         )}
       `);
 
 
-      marker.customerId =
-        customer.id;
+      bounds.push(
+        [lat, lng]
+      );
 
-
-      markers.push(marker);
     }
   );
 
 
-  const mapCount =
-    $("mapCount");
+  map.fitBounds(bounds, {
+    padding: [30, 30]
+  });
 
 
-  if (mapCount) {
+  setTimeout(
+    () => map.invalidateSize(),
+    200
+  );
 
-    mapCount.textContent =
-      validCustomers.length +
-      " khách hàng";
-  }
 }
 
 
-// ================= FOCUS CUSTOMER =================
+// =====================================================
+// FOCUS CUSTOMER
+// =====================================================
 
-function focusCustomer(id) {
+window.focusCustomer =
+  function(lat, lng) {
 
-  const customer =
-    customers.find(
-      item =>
-        Number(item.id) ===
-        Number(id)
+    showMapPage().then(
+      function() {
+
+        if (!map) return;
+
+        map.setView(
+          [Number(lat), Number(lng)],
+          17
+        );
+
+      }
     );
 
+  };
 
-  if (!customer) return;
 
+// =====================================================
+// VỊ TRÍ CỦA TÔI
+// =====================================================
 
-  if (
-    customer.latitude == null ||
-    customer.longitude == null
-  ) {
+function goMyLocation() {
+
+  if (!navigator.geolocation) {
 
     alert(
-      "❌ Khách hàng chưa có GPS"
+      "Thiết bị không hỗ trợ GPS."
     );
 
     return;
+
   }
 
 
-  showMap();
+  navigator.geolocation.getCurrentPosition(
+
+    function(position) {
+
+      const lat =
+        position.coords.latitude;
+
+      const lng =
+        position.coords.longitude;
 
 
-  setTimeout(() => {
+      if (map) {
 
-    if (!map) return;
-
-
-    const lat =
-      Number(customer.latitude);
-
-    const lng =
-      Number(customer.longitude);
+        map.setView(
+          [lat, lng],
+          17
+        );
 
 
-    map.setView(
-      [lat, lng],
-      17
-    );
+        L.marker(
+          [lat, lng]
+        )
+          .addTo(map)
+          .bindPopup(
+            "📍 Vị trí của bạn"
+          )
+          .openPopup();
+
+      }
+
+    },
+
+    function() {
+
+      alert(
+        "❌ Không lấy được vị trí."
+
+      );
+
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000
+    }
+
+  );
+
+}
 
 
-    const marker =
-      markers.find(
-        item =>
-          Number(item.customerId) ===
-          Number(id)
+// =====================================================
+// HIỂN THỊ ẢNH
+// =====================================================
+
+window.showPhoto =
+  function(src) {
+
+    const win =
+      window.open(
+        "",
+        "_blank"
       );
 
 
-    if (marker) {
-      marker.openPopup();
+    if (!win) {
+
+      return;
+
     }
 
-  }, 500);
-}
+
+    win.document.write(`
+      <!doctype html>
+      <html>
+      <head>
+        <meta name="viewport"
+              content="width=device-width,initial-scale=1">
+        <title>Ảnh nhà khách</title>
+      </head>
+
+      <body style="
+        margin:0;
+        background:#000;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        min-height:100vh;
+      ">
+
+        <img
+          src="${src}"
+          style="
+            max-width:100%;
+            max-height:100vh;
+            object-fit:contain;
+          "
+        >
+
+      </body>
+      </html>
+    `);
+
+  };
 
 
-// ================= MY LOCATION =================
-
-function showMyLocation() {
-
-  if (
-    latitude == null ||
-    longitude == null
-  ) {
-
-    alert(
-      "❌ Bạn chưa lấy GPS"
-    );
-
-    return;
-  }
-
-
-  if (!map) return;
-
-
-  map.setView(
-    [
-      latitude,
-      longitude
-    ],
-    17
-  );
-
-
-  L.marker([
-    latitude,
-    longitude
-  ])
-    .addTo(map)
-    .bindPopup(
-      "📍 Vị trí của tôi"
-    )
-    .openPopup();
-}
-
-
-// ================= PHOTO =================
-
-function showPhoto(photo) {
-
-  if (!photo) return;
-
-
-  const win =
-    window.open(
-      "",
-      "_blank"
-    );
-
-
-  if (!win) {
-
-    alert(
-      "❌ Trình duyệt đã chặn cửa sổ ảnh"
-    );
-
-    return;
-  }
-
-
-  win.document.write(`
-    <!doctype html>
-
-    <html>
-
-    <head>
-
-      <meta
-        name="viewport"
-        content="width=device-width,initial-scale=1">
-
-      <title>Ảnh khách hàng</title>
-
-      <style>
-
-        body {
-          margin: 0;
-          background: #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-        }
-
-        img {
-          max-width: 100%;
-          max-height: 100vh;
-          object-fit: contain;
-        }
-
-      </style>
-
-    </head>
-
-    <body>
-
-      <img src="${photo}">
-
-    </body>
-
-    </html>
-  `);
-
-
-  win.document.close();
-}
-
-
-// ================= ESCAPE HTML =================
+// =====================================================
+// ESCAPE HTML
+// =====================================================
 
 function escapeHTML(value) {
 
-  return String(value ?? "")
+  return String(value)
     .replace(
       /&/g,
       "&amp;"
@@ -1715,4 +1600,5 @@ function escapeHTML(value) {
       /'/g,
       "&#039;"
     );
+
 }
