@@ -2,299 +2,323 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
   <title>Khách Hàng Bản Đồ</title>
 
   <link rel="stylesheet" href="style.css">
 
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Leaflet Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
 </head>
 
 <body>
 
-<main class="container">
+<!-- ================= LOGIN ================= -->
 
-  <!-- ==================== ĐĂNG NHẬP ==================== -->
+<section id="loginView" class="login-screen">
 
-  <section id="loginView" class="card">
+  <div class="login-card">
 
-    <h1>📍 Khách Hàng Bản Đồ</h1>
+    <div class="logo">📍</div>
 
-    <p class="muted">
-      Đăng nhập để quản lý dữ liệu khách hàng dùng chung.
+    <h1>Khách Hàng<br>Bản Đồ</h1>
+
+    <p>
+      Đăng nhập để quản lý khách hàng
     </p>
 
     <input
       id="email"
       type="email"
       placeholder="Email"
+      autocomplete="email"
     >
 
     <input
       id="password"
       type="password"
       placeholder="Mật khẩu"
+      autocomplete="current-password"
     >
 
-    <button id="loginBtn">
+    <button id="loginBtn" class="primary-btn">
       🔐 Đăng nhập
     </button>
 
     <p id="loginMsg" class="error"></p>
 
-  </section>
+  </div>
+
+</section>
 
 
-  <!-- ==================== ỨNG DỤNG ==================== -->
+<!-- ================= APP ================= -->
 
-  <section id="appView" class="hidden">
+<section id="appView" class="hidden">
 
-    <header class="topbar">
+  <!-- HEADER -->
+
+  <header class="app-header">
+
+    <button id="menuBtn" class="menu-btn">
+      ☰
+    </button>
+
+    <div class="header-title">
+      <strong>Khách Hàng</strong>
+      <span>Bản Đồ</span>
+    </div>
+
+    <button id="logoutBtn" class="logout-btn">
+      ⇥
+    </button>
+
+  </header>
+
+
+  <!-- ================= SIDE MENU ================= -->
+
+  <div id="menuOverlay" class="menu-overlay hidden"></div>
+
+  <aside id="sideMenu" class="side-menu">
+
+    <div class="menu-header">
 
       <div>
-        <h1>📍 Khách Hàng Bản Đồ</h1>
-
-        <div
-          id="userEmail"
-          class="muted">
-        </div>
+        <strong>📍 Khách Hàng</strong>
+        <small id="menuEmail"></small>
       </div>
 
-      <button
-        id="logoutBtn"
-        class="secondary">
-        Đăng xuất
+      <button id="closeMenuBtn">
+        ×
       </button>
 
-    </header>
+    </div>
 
 
-    <!-- ==================== THÊM KHÁCH HÀNG ==================== -->
+    <button class="menu-item active" id="menuAdd">
+      <span>➕</span>
+      <span>Thêm khách hàng</span>
+    </button>
 
-    <section class="card">
 
-      <h2>➕ Thêm khách hàng</h2>
+    <button class="menu-item" id="menuCustomers">
+      <span>👥</span>
+      <span>Khách hàng đã lưu</span>
+    </button>
 
-      <div class="grid">
 
-        <input
-          id="name"
-          placeholder="Họ và tên *"
-        >
+    <button class="menu-item" id="menuMap">
+      <span>🗺️</span>
+      <span>Bản đồ khách hàng</span>
+    </button>
 
-        <input
-          id="address"
-          placeholder="Địa chỉ"
-        >
 
-        <textarea
-          id="note"
-          placeholder="Ghi chú">
-        </textarea>
+    <div class="menu-bottom">
 
+      <button id="menuLogout" class="menu-logout">
+        🚪 Đăng xuất
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <!-- ================= MAIN ================= -->
+
+  <main id="mainView" class="main-view">
+
+    <div class="welcome">
+
+      <span>Xin chào 👋</span>
+
+      <h1>Thêm khách hàng</h1>
+
+      <p>
+        Nhập thông tin và lưu vị trí khách hàng.
+      </p>
+
+    </div>
+
+
+    <!-- FORM -->
+
+    <section class="form-card">
+
+      <label>Họ và tên <b>*</b></label>
+
+      <input
+        id="name"
+        type="text"
+        placeholder="Nhập họ và tên khách hàng"
+      >
+
+
+      <label>Địa chỉ</label>
+
+      <input
+        id="address"
+        type="text"
+        placeholder="Nhập địa chỉ khách hàng"
+      >
+
+
+      <label>Ghi chú</label>
+
+      <textarea
+        id="note"
+        placeholder="Nhập ghi chú..."
+      ></textarea>
+
+
+      <!-- GPS -->
+
+      <button id="gpsBtn" class="gps-btn">
+        📍 Lấy vị trí GPS
+      </button>
+
+      <div id="gpsStatus" class="status">
       </div>
 
 
-      <!-- ==================== GPS ==================== -->
+      <!-- CAMERA -->
 
-      <div class="actions">
+      <div class="photo-section">
 
-        <button id="gpsBtn">
-          📍 Lấy vị trí GPS
+        <label>🏠 Ảnh nhà khách</label>
+
+        <button id="cameraBtn" class="camera-btn">
+          📷 Chụp ảnh nhà khách
         </button>
 
-        <span
-          id="gpsStatus"
-          class="muted">
-        </span>
 
-      </div>
-
-
-      <!-- ==================== ẢNH NHÀ ==================== -->
-
-      <div class="cameraBox">
-
-        <h3>🏠 Ảnh nhà khách</h3>
-
-        <div class="actions">
-
-          <!-- CHỤP ẢNH -->
-          <button
-            type="button"
-            id="cameraBtn">
-            📷 Chụp ảnh
-          </button>
-
-
-          <!-- CHỌN ẢNH -->
-          <label
-            for="housePhoto"
-            class="button">
-            🖼️ Chọn ảnh
-          </label>
-
-          <input
-            id="housePhoto"
-            type="file"
-            accept="image/*"
-            style="display:none;"
-          >
-
-        </div>
-
-
-        <!-- CAMERA -->
-        <div
-          id="cameraArea"
-          class="hidden">
+        <div id="cameraArea" class="camera-area hidden">
 
           <video
             id="camera"
             autoplay
-            playsinline
-            style="
-              width:100%;
-              max-width:500px;
-              border-radius:10px;
-              margin-top:10px;
-            ">
+            playsinline>
           </video>
 
-          <div class="actions">
+          <button
+            id="takePhotoBtn"
+            class="take-photo-btn">
+            📸 Chụp
+          </button>
 
-            <button
-              type="button"
-              id="takePhotoBtn">
-              📸 Chụp
-            </button>
-
-            <button
-              type="button"
-              id="closeCameraBtn"
-              class="secondary">
-              ❌ Đóng camera
-            </button>
-
-          </div>
+          <button
+            id="closeCameraBtn"
+            class="close-camera-btn">
+            Đóng camera
+          </button>
 
         </div>
 
 
-        <!-- CANVAS ẨN -->
-        <canvas
-          id="photoCanvas"
-          style="display:none;">
-        </canvas>
+        <canvas id="photoCanvas" class="hidden"></canvas>
 
-
-        <!-- XEM TRƯỚC ẢNH -->
-        <div>
-
-          <img
-            id="photoPreview"
-            class="hidden"
-            alt="Ảnh nhà khách"
-            style="
-              width:100%;
-              max-width:500px;
-              margin-top:10px;
-              border-radius:10px;
-            "
-          >
-
-        </div>
-
-
-        <p
-          id="photoStatus"
-          class="muted">
-        </p>
-
-      </div>
-
-
-      <!-- ==================== LƯU ==================== -->
-
-      <div class="actions">
-
-        <button id="saveBtn">
-          💾 Lưu khách hàng
-        </button>
-
-      </div>
-
-    </section>
-
-
-    <!-- ==================== DANH SÁCH KHÁCH HÀNG ==================== -->
-
-    <section class="card">
-
-      <div class="searchRow">
-
-        <input
-          id="search"
-          placeholder="Tìm theo tên, địa chỉ, ghi chú..."
+        <img
+          id="photoPreview"
+          class="photo-preview hidden"
+          alt="Ảnh nhà khách"
         >
 
-        <button
-          id="refreshBtn"
-          class="secondary">
-          🔄 Làm mới
-        </button>
+        <div id="photoStatus" class="status"></div>
 
       </div>
 
 
-      <div
-        id="count"
-        class="muted">
-      </div>
+      <!-- SAVE -->
 
+      <button id="saveBtn" class="save-btn">
+        💾 Lưu khách hàng
+      </button>
 
-      <div class="tableWrap">
-
-        <table>
-
-          <thead>
-
-            <tr>
-
-              <th>Họ tên</th>
-
-              <th>Địa chỉ</th>
-
-              <th>GPS</th>
-
-              <th>Ảnh nhà</th>
-
-              <th>Ghi chú</th>
-
-              <th>Ngày tạo</th>
-
-              <th>Thao tác</th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody id="customerRows"></tbody>
-
-        </table>
-
-      </div>
+      <div id="saveStatus" class="save-status"></div>
 
     </section>
+
+  </main>
+
+
+  <!-- ================= CUSTOMER LIST ================= -->
+
+  <section id="customersView" class="page-view hidden">
+
+    <div class="page-top">
+
+      <button class="back-btn" id="backFromCustomers">
+        ←
+      </button>
+
+      <div>
+        <h2>Khách hàng đã lưu</h2>
+        <span id="count" class="muted"></span>
+      </div>
+
+    </div>
+
+
+    <div class="search-box">
+
+      <span>🔎</span>
+
+      <input
+        id="search"
+        placeholder="Tìm tên, địa chỉ, ghi chú..."
+      >
+
+    </div>
+
+
+    <div id="customerList" class="customer-list"></div>
 
   </section>
 
-</main>
+
+  <!-- ================= MAP ================= -->
+
+  <section id="mapView" class="map-page hidden">
+
+    <div class="map-header">
+
+      <button id="backFromMap" class="back-btn">
+        ←
+      </button>
+
+      <div>
+        <h2>Bản đồ khách hàng</h2>
+        <span id="mapCount">
+          Đang tải...
+        </span>
+      </div>
+
+      <button id="myLocationBtn" class="location-btn">
+        ◎
+      </button>
+
+    </div>
 
 
-<!-- ==================== JAVASCRIPT ==================== -->
+    <div id="map"></div>
+
+  </section>
+
+</section>
+
 
 <script src="app.js"></script>
 
