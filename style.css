@@ -1,9 +1,11 @@
+/* =========================================================
+   RESET
+========================================================= */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
-
 html,
 body {
     width: 100%;
@@ -12,41 +14,39 @@ body {
     background: #f5f7fb;
     color: #1f2937;
 }
-
 button,
 input,
 textarea {
     font-family: inherit;
 }
-
 button {
     cursor: pointer;
 }
-
-
-/* =========================
+/* =========================================================
    LOGIN
-========================= */
-
+========================================================= */
 .login-page {
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(135deg, #eef4ff, #f8fafc);
+    background: linear-gradient(
+        135deg,
+        #eef4ff,
+        #f8fafc
+    );
 }
-
 .login-box {
     width: 100%;
     max-width: 390px;
     background: #ffffff;
     border-radius: 20px;
     padding: 30px 24px;
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.10);
+    box-shadow:
+        0 10px 35px rgba(0, 0, 0, 0.10);
     text-align: center;
 }
-
 .login-logo {
     width: 70px;
     height: 70px;
@@ -59,17 +59,14 @@ button {
     color: white;
     font-size: 34px;
 }
-
 .login-box h1 {
     font-size: 24px;
     margin-bottom: 8px;
 }
-
 .login-subtitle {
     color: #6b7280;
     margin-bottom: 24px;
 }
-
 .login-box input[type="email"],
 .login-box input[type="password"] {
     width: 100%;
@@ -81,11 +78,9 @@ button {
     outline: none;
     font-size: 16px;
 }
-
 .login-box input:focus {
     border-color: #2563eb;
 }
-
 .remember-row {
     display: flex;
     align-items: center;
@@ -95,12 +90,9 @@ button {
     color: #4b5563;
     font-size: 14px;
 }
-
-
-/* =========================
+/* =========================================================
    BUTTON
-========================= */
-
+========================================================= */
 .primary-btn,
 .secondary-btn,
 .cancel-btn {
@@ -111,33 +103,31 @@ button {
     font-size: 16px;
     font-weight: 600;
 }
-
 .primary-btn {
     width: 100%;
     background: #2563eb;
     color: white;
 }
-
+.primary-btn:disabled,
+.secondary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 .primary-btn:active {
     transform: scale(0.98);
 }
-
 .secondary-btn {
     width: 100%;
     background: #e8f0ff;
     color: #1d4ed8;
 }
-
 .cancel-btn {
     background: #e5e7eb;
     color: #374151;
 }
-
-
-/* =========================
+/* =========================================================
    HEADER
-========================= */
-
+========================================================= */
 .app-header {
     height: 60px;
     background: #2563eb;
@@ -147,9 +137,9 @@ button {
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.15);
 }
-
 .menu-button {
     width: 60px;
     height: 60px;
@@ -158,17 +148,13 @@ button {
     color: white;
     font-size: 28px;
 }
-
 .header-title {
     font-size: 18px;
     font-weight: 700;
 }
-
-
-/* =========================
+/* =========================================================
    SIDE MENU
-========================= */
-
+========================================================= */
 .menu-overlay {
     position: fixed;
     inset: 0;
@@ -176,11 +162,9 @@ button {
     z-index: 1998;
     display: none;
 }
-
 .menu-overlay.active {
     display: block;
 }
-
 .side-menu {
     position: fixed;
     top: 0;
@@ -190,13 +174,12 @@ button {
     background: white;
     z-index: 1999;
     transition: left 0.25s ease;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15);
+    box-shadow:
+        4px 0 15px rgba(0, 0, 0, 0.15);
 }
-
 .side-menu.active {
     left: 0;
 }
-
 .menu-header {
     min-height: 85px;
     padding: 18px;
@@ -206,7 +189,6 @@ button {
     background: #2563eb;
     color: white;
 }
-
 .menu-logo {
     width: 48px;
     height: 48px;
@@ -217,18 +199,15 @@ button {
     justify-content: center;
     font-size: 24px;
 }
-
 .menu-user {
     margin-top: 4px;
     font-size: 12px;
     opacity: 0.9;
     word-break: break-all;
 }
-
 .menu-list {
     padding: 12px 0;
 }
-
 .menu-item {
     width: 100%;
     height: 54px;
@@ -242,93 +221,78 @@ button {
     color: #374151;
     text-align: left;
 }
-
 .menu-item:hover {
     background: #f3f4f6;
 }
-
 .logout-item {
     margin-top: 15px;
     color: #dc2626;
 }
-
-
-/* =========================
+/* =========================================================
    CONTENT
-========================= */
-
+========================================================= */
 .app-content {
+    width: 100%;
     max-width: 900px;
     margin: 0 auto;
     padding: 18px;
 }
-
 .page {
     width: 100%;
 }
-
 .page-title {
     margin-bottom: 18px;
 }
-
 .page-title h2 {
     font-size: 22px;
 }
-
-
-/* =========================
+/* =========================================================
    HOME
-========================= */
-
+========================================================= */
 .welcome-card {
     background: white;
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 18px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06);
 }
-
 .welcome-card h2 {
     margin-bottom: 8px;
 }
-
 .welcome-card p {
     color: #6b7280;
     line-height: 1.5;
 }
-
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns:
+        repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 18px;
 }
-
 .stat-card {
     background: white;
     border-radius: 15px;
     padding: 18px 10px;
     text-align: center;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06);
 }
-
 .stat-icon {
     font-size: 25px;
     margin-bottom: 7px;
 }
-
 .stat-number {
     font-size: 25px;
     font-weight: 700;
     color: #2563eb;
 }
-
 .stat-label {
     color: #6b7280;
     font-size: 13px;
     margin-top: 5px;
 }
-
 .home-action {
     width: 100%;
     min-height: 52px;
@@ -339,31 +303,27 @@ button {
     color: #1d4ed8;
     font-size: 16px;
     font-weight: 600;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06);
 }
-
-
-/* =========================
+/* =========================================================
    FORM
-========================= */
-
+========================================================= */
 .form-card {
     background: white;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06);
 }
-
 .form-card label {
     display: block;
     margin: 15px 0 7px;
     font-weight: 600;
 }
-
 .form-card label:first-child {
     margin-top: 0;
 }
-
 .form-card input[type="text"],
 .form-card textarea {
     width: 100%;
@@ -374,23 +334,19 @@ button {
     outline: none;
     resize: vertical;
 }
-
 .form-card input:focus,
 .form-card textarea:focus {
     border-color: #2563eb;
 }
-
 .form-section {
     margin-top: 18px;
 }
-
 .status-text {
     margin-top: 8px;
     font-size: 13px;
     color: #6b7280;
     line-height: 1.4;
 }
-
 .photo-preview {
     display: block;
     width: 100%;
@@ -400,23 +356,19 @@ button {
     border-radius: 12px;
     background: #f3f4f6;
 }
-
 .form-buttons {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
+    grid-template-columns:
+        1fr 1.5fr;
     gap: 10px;
     margin-top: 22px;
 }
-
-
-/* =========================
+/* =========================================================
    SEARCH
-========================= */
-
+========================================================= */
 .search-box {
     margin-bottom: 15px;
 }
-
 .search-box input {
     width: 100%;
     height: 50px;
@@ -427,58 +379,130 @@ button {
     outline: none;
     background: white;
 }
-
 .search-box input:focus {
     border-color: #2563eb;
 }
-
-
-/* =========================
+/* =========================================================
    CUSTOMER LIST
-========================= */
-
+========================================================= */
 .customer-list {
     display: flex;
     flex-direction: column;
-    gap: 13px;
+    gap: 8px;
 }
-
 .customer-card {
     background: white;
     border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
 }
-
-.customer-name {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 9px;
+/* =========================================================
+   CUSTOMER SUMMARY
+========================================================= */
+.compact-card {
+    padding: 0;
+    overflow: hidden;
 }
-
-.customer-info {
-    color: #4b5563;
+.customer-summary {
+    width: 100%;
+    min-height: 68px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    background: #ffffff;
+}
+.customer-summary:active {
+    background: #f8fafc;
+}
+.customer-summary-text {
+    min-width: 0;
+    flex: 1;
+}
+.compact-card .customer-name {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.customer-address {
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.customer-arrow {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #eef4ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+/* =========================================================
+   CUSTOMER DETAIL
+========================================================= */
+.customer-detail {
+    border-top: 1px solid #eef0f4;
+    padding: 14px;
+    background: #ffffff;
+}
+.detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 11px;
     font-size: 14px;
-    line-height: 1.55;
-    margin-bottom: 5px;
+    line-height: 1.45;
     word-break: break-word;
 }
-
-.customer-photo {
-    width: 100%;
-    max-height: 250px;
-    object-fit: cover;
-    border-radius: 12px;
+.detail-row strong {
+    color: #374151;
+}
+.detail-row span {
+    color: #6b7280;
+}
+/* =========================================================
+   PHOTO
+========================================================= */
+.customer-photo-box {
     margin-top: 12px;
 }
-
+.customer-detail .customer-photo {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 12px;
+    cursor: pointer;
+}
+.photo-hint {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+    margin-top: 5px;
+}
+/* =========================================================
+   CUSTOMER BUTTONS
+========================================================= */
 .customer-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns:
+        1fr 1fr;
     gap: 8px;
-    margin-top: 13px;
+    margin-top: 15px;
 }
-
 .customer-actions button {
     min-height: 43px;
     border: none;
@@ -486,27 +510,36 @@ button {
     font-size: 14px;
     font-weight: 600;
 }
-
+.action-btn {
+    min-height: 43px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
 .edit-btn {
     background: #e8f0ff;
     color: #1d4ed8;
 }
-
 .delete-btn {
     background: #fee2e2;
     color: #dc2626;
 }
-
 .map-btn {
     background: #dcfce7;
     color: #15803d;
 }
-
+.nav-btn {
+    background: #fff7ed;
+    color: #c2410c;
+}
 .photo-btn {
     background: #f3e8ff;
     color: #7e22ce;
 }
-
+/* =========================================================
+   EMPTY
+========================================================= */
 .empty-state {
     background: white;
     border-radius: 15px;
@@ -514,12 +547,9 @@ button {
     text-align: center;
     color: #6b7280;
 }
-
-
-/* =========================
+/* =========================================================
    MAP
-========================= */
-
+========================================================= */
 .map-container {
     width: 100%;
     height: calc(100vh - 115px);
@@ -528,40 +558,43 @@ button {
     overflow: hidden;
     background: #e5e7eb;
 }
-
-
-/* =========================
+/* =========================================================
    MOBILE
-========================= */
-
+========================================================= */
 @media (max-width: 600px) {
-
     .app-content {
         padding: 14px;
     }
-
     .stats-grid {
         gap: 8px;
     }
-
     .stat-card {
         padding: 14px 5px;
     }
-
     .stat-number {
         font-size: 22px;
     }
-
     .stat-label {
         font-size: 12px;
     }
-
     .form-card {
         padding: 16px;
     }
-
     .map-container {
         height: calc(100vh - 110px);
         min-height: 400px;
+    }
+    .customer-summary {
+        min-height: 62px;
+        padding: 10px 12px;
+    }
+    .compact-card .customer-name {
+        font-size: 15px;
+    }
+    .customer-address {
+        font-size: 12px;
+    }
+    .customer-detail {
+        padding: 12px;
     }
 }
