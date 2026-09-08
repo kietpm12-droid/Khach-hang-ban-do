@@ -1,623 +1,1225 @@
 // ============================================================
 // APP.JS
-// QUẢN LÝ KHÁCH HÀNG + GPS + ẢNH NHÀ + BẢN ĐỒ
+// KHÁCH HÀNG BẢN ĐỒ
+// PHIÊN BẢN ĐỒNG BỘ INDEX + CSS
 // ============================================================
+
 "use strict";
+
+
 // ============================================================
 // SUPABASE
 // ============================================================
+
 const SUPABASE_URL =
     "https://yxzjddriuglqwtzxmgbi.supabase.co";
+
 const SUPABASE_KEY =
     "sb_publishable_QbGR8Dme3YIyDL1aceUIYA_Efyf65Lf";
-// Kiểm tra Supabase
-if (!window.supabase) {
-    document.addEventListener("DOMContentLoaded", function () {
-        alert(
-            "❌ Không tải được Supabase.\n\n" +
-            "Hãy kiểm tra kết nối Internet và tải lại trang."
-        );
-    });
-    throw new Error("Supabase JS chưa được tải.");
-}
-const db =
-    window.supabase.createClient(
+
+
+let db = null;
+
+if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+) {
+
+    db = window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_KEY
     );
+
+} else {
+
+    console.error(
+        "❌ Không tải được Supabase."
+    );
+
+}
+
+
 // ============================================================
-// BIẾN TOÀN CỤC
+// BIẾN
 // ============================================================
+
 let currentUser = null;
+
 let customers = [];
+
 let editingId = null;
+
 let latitude = null;
+
 let longitude = null;
+
 let photoData = null;
+
 let map = null;
+
 let mapMarkers = [];
+
 let openedCustomerId = null;
+
+
 // ============================================================
 // KHỞI ĐỘNG
 // ============================================================
+
 document.addEventListener(
     "DOMContentLoaded",
     async function () {
+
+        console.log(
+            "APP.JS đã khởi động"
+        );
+
+        setupEvents();
+
+        // ------------------------------------------
+        // GHI NHỚ EMAIL
+        // ------------------------------------------
+
+        const savedEmail =
+            localStorage.getItem(
+                "savedEmail"
+            );
+
+        const emailInput =
+            document.getElementById(
+                "email"
+            );
+
+        const rememberInput =
+            document.getElementById(
+                "remember"
+            );
+
+        if (
+            savedEmail &&
+            emailInput
+        ) {
+
+            emailInput.value =
+                savedEmail;
+
+            if (rememberInput) {
+
+                rememberInput.checked =
+                    true;
+
+            }
+
+        }
+
+
+        // ------------------------------------------
+        // KIỂM TRA SUPABASE
+        // ------------------------------------------
+
+        if (!db) {
+
+            alert(
+                "❌ Không tải được Supabase.\n\n" +
+                "Hãy kiểm tra kết nối Internet " +
+                "và thử tải lại trang."
+            );
+
+            showLogin();
+
+            return;
+
+        }
+
+
+        // ------------------------------------------
+        // KIỂM TRA SESSION
+        // ------------------------------------------
+
         try {
-            setupEvents();
-            loadRememberedEmail();
-            const {
-                data,
-                error
-            } = await db.auth.getSession();
-            if (error) {
-                console.error(error);
+
+            const result =
+                await db.auth.getSession();
+
+            if (result.error) {
+
+                console.error(
+                    result.error
+                );
+
                 showLogin();
+
                 return;
+
             }
+
+            const session =
+                result.data.session;
+
             if (
-                data &&
-                data.session &&
-                data.session.user
+                session &&
+                session.user
             ) {
+
                 currentUser =
-                    data.session.user;
+                    session.user;
+
                 showApp();
+
             } else {
+
                 showLogin();
+
             }
+
         } catch (error) {
+
             console.error(
-                "Lỗi khởi động:",
+                "Lỗi kiểm tra đăng nhập:",
                 error
             );
+
             showLogin();
+
         }
+
     }
 );
+
+
 // ============================================================
 // GẮN SỰ KIỆN
 // ============================================================
+
 function setupEvents() {
-    // --------------------------------------------------------
+
+    // ------------------------------------------
     // LOGIN
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const loginBtn =
-        document.getElementById("loginBtn");
+        document.getElementById(
+            "loginBtn"
+        );
+
     if (loginBtn) {
+
         loginBtn.addEventListener(
             "click",
             login
         );
+
     }
+
+
+    // ------------------------------------------
+    // ENTER EMAIL
+    // ------------------------------------------
+
+    const emailInput =
+        document.getElementById(
+            "email"
+        );
+
+    if (emailInput) {
+
+        emailInput.addEventListener(
+            "keydown",
+            function (event) {
+
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+
+                    login();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ------------------------------------------
+    // ENTER PASSWORD
+    // ------------------------------------------
+
     const passwordInput =
-        document.getElementById("password");
+        document.getElementById(
+            "password"
+        );
+
     if (passwordInput) {
+
         passwordInput.addEventListener(
             "keydown",
             function (event) {
-                if (event.key === "Enter") {
+
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+
                     login();
+
                 }
+
             }
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // MENU
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const menuBtn =
-        document.getElementById("menuBtn");
+        document.getElementById(
+            "menuBtn"
+        );
+
     if (menuBtn) {
+
         menuBtn.addEventListener(
             "click",
             openMenu
         );
+
     }
+
+
     const menuOverlay =
-        document.getElementById("menuOverlay");
+        document.getElementById(
+            "menuOverlay"
+        );
+
     if (menuOverlay) {
+
         menuOverlay.addEventListener(
             "click",
             closeMenu
         );
+
     }
-    document
-        .querySelectorAll("[data-page]")
-        .forEach(function (button) {
-            button.addEventListener(
-                "click",
-                function () {
-                    const page =
-                        this.getAttribute(
-                            "data-page"
-                        );
-                    closeMenu();
-                    showPage(page);
-                }
-            );
-        });
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // LOGOUT
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const logoutBtn =
-        document.getElementById("logoutBtn");
+        document.getElementById(
+            "logoutBtn"
+        );
+
     if (logoutBtn) {
+
         logoutBtn.addEventListener(
             "click",
             logout
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
+    // MENU ITEMS
+    // ------------------------------------------
+
+    document
+        .querySelectorAll(
+            ".menu-item[data-page]"
+        )
+        .forEach(
+            function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        const page =
+                            button.dataset.page;
+
+                        showPage(page);
+
+                        closeMenu();
+
+                    }
+                );
+
+            }
+        );
+
+
+    // ------------------------------------------
     // GPS
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const gpsBtn =
-        document.getElementById("gpsBtn");
+        document.getElementById(
+            "gpsBtn"
+        );
+
     if (gpsBtn) {
+
         gpsBtn.addEventListener(
             "click",
             getGPS
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // CAMERA
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const cameraBtn =
-        document.getElementById("cameraBtn");
+        document.getElementById(
+            "cameraBtn"
+        );
+
     const cameraInput =
-        document.getElementById("cameraInput");
+        document.getElementById(
+            "cameraInput"
+        );
+
     if (
         cameraBtn &&
         cameraInput
     ) {
+
         cameraBtn.addEventListener(
             "click",
             function () {
+
                 cameraInput.click();
+
             }
         );
+
+
         cameraInput.addEventListener(
             "change",
             handlePhoto
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // SAVE
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const saveBtn =
-        document.getElementById("saveBtn");
+        document.getElementById(
+            "saveBtn"
+        );
+
     if (saveBtn) {
+
         saveBtn.addEventListener(
             "click",
             saveCustomer
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // CANCEL
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const cancelBtn =
-        document.getElementById("cancelBtn");
+        document.getElementById(
+            "cancelBtn"
+        );
+
     if (cancelBtn) {
+
         cancelBtn.addEventListener(
             "click",
             function () {
+
                 resetForm();
-                showPage("customers");
+
+                showPage(
+                    "home"
+                );
+
             }
         );
+
     }
-    // --------------------------------------------------------
+
+
+    // ------------------------------------------
     // SEARCH
-    // --------------------------------------------------------
+    // ------------------------------------------
+
     const searchInput =
-        document.getElementById("searchInput");
+        document.getElementById(
+            "searchInput"
+        );
+
     if (searchInput) {
+
         searchInput.addEventListener(
             "input",
             function () {
-                openedCustomerId = null;
+
                 renderCustomers(
-                    this.value
+                    searchInput.value
                 );
+
             }
         );
+
     }
+
 }
-// ============================================================
-// NHỚ EMAIL
-// ============================================================
-function loadRememberedEmail() {
-    const savedEmail =
-        localStorage.getItem(
-            "savedEmail"
-        );
-    const emailInput =
-        document.getElementById("email");
-    const remember =
-        document.getElementById("remember");
-    if (
-        savedEmail &&
-        emailInput
-    ) {
-        emailInput.value =
-            savedEmail;
-    }
-    if (
-        savedEmail &&
-        remember
-    ) {
-        remember.checked = true;
-    }
-}
+
+
 // ============================================================
 // LOGIN
 // ============================================================
+
 async function login() {
+
     const emailInput =
-        document.getElementById("email");
+        document.getElementById(
+            "email"
+        );
+
     const passwordInput =
-        document.getElementById("password");
-    const remember =
-        document.getElementById("remember");
-    const loginBtn =
-        document.getElementById("loginBtn");
+        document.getElementById(
+            "password"
+        );
+
+    const rememberInput =
+        document.getElementById(
+            "remember"
+        );
+
+
     if (
         !emailInput ||
         !passwordInput
     ) {
+
         return;
+
     }
+
+
     const email =
         emailInput.value.trim();
+
     const password =
         passwordInput.value;
-    if (!email || !password) {
+
+
+    if (
+        !email ||
+        !password
+    ) {
+
         alert(
-            "❌ Vui lòng nhập email và mật khẩu."
+            "❌ Vui lòng nhập Email và mật khẩu."
         );
+
         return;
+
     }
+
+
+    if (!db) {
+
+        alert(
+            "❌ Supabase chưa sẵn sàng."
+        );
+
+        return;
+
+    }
+
+
+    const loginBtn =
+        document.getElementById(
+            "loginBtn"
+        );
+
+
     if (loginBtn) {
-        loginBtn.disabled = true;
+
+        loginBtn.disabled =
+            true;
+
         loginBtn.textContent =
             "Đang đăng nhập...";
+
     }
+
+
     try {
-        const {
-            data,
-            error
-        } =
+
+        const result =
             await db.auth.signInWithPassword({
-                email: email,
-                password: password
+
+                email:
+                    email,
+
+                password:
+                    password
+
             });
+
+
+        const data =
+            result.data;
+
+        const error =
+            result.error;
+
+
         if (error) {
-            console.error(error);
+
+            console.error(
+                error
+            );
+
             alert(
                 "❌ Đăng nhập thất bại:\n\n" +
                 error.message
             );
+
             return;
+
         }
+
+
         currentUser =
             data.user;
+
+
+        // --------------------------------------
         // GHI NHỚ EMAIL
+        // --------------------------------------
+
         if (
-            remember &&
-            remember.checked
+            rememberInput &&
+            rememberInput.checked
         ) {
+
             localStorage.setItem(
                 "savedEmail",
                 email
             );
+
         } else {
+
             localStorage.removeItem(
                 "savedEmail"
             );
+
         }
+
+
         showApp();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Có lỗi xảy ra khi đăng nhập:\n\n" +
+            error.message
+        );
+
     } finally {
+
         if (loginBtn) {
-            loginBtn.disabled = false;
+
+            loginBtn.disabled =
+                false;
+
             loginBtn.textContent =
                 "Đăng nhập";
+
         }
+
     }
+
 }
+
+
 // ============================================================
-// HIỂN THỊ APP
+// HIỆN APP
 // ============================================================
+
 function showApp() {
+
     const loginPage =
         document.getElementById(
             "loginPage"
         );
+
     const appPage =
         document.getElementById(
             "appPage"
         );
+
+
     if (loginPage) {
+
         loginPage.style.display =
             "none";
+
     }
+
+
     if (appPage) {
+
         appPage.style.display =
             "block";
+
     }
-    // Hiển thị email
+
+
     const menuUser =
         document.getElementById(
             "menuUser"
         );
+
+
     if (
         menuUser &&
         currentUser
     ) {
+
         menuUser.textContent =
-            currentUser.email || "";
+            currentUser.email ||
+            "";
+
     }
-    showPage("home");
+
+
+    showPage(
+        "home"
+    );
+
     loadCustomers();
+
 }
+
+
 // ============================================================
-// HIỂN THỊ LOGIN
+// HIỆN LOGIN
 // ============================================================
+
 function showLogin() {
+
     const loginPage =
         document.getElementById(
             "loginPage"
         );
+
     const appPage =
         document.getElementById(
             "appPage"
         );
+
+
     if (loginPage) {
+
         loginPage.style.display =
             "flex";
+
     }
+
+
     if (appPage) {
+
         appPage.style.display =
             "none";
+
     }
+
 }
+
+
 // ============================================================
 // MENU
 // ============================================================
+
 function openMenu() {
-    const menu =
+
+    const sideMenu =
         document.getElementById(
             "sideMenu"
         );
+
     const overlay =
         document.getElementById(
             "menuOverlay"
         );
-    if (menu) {
-        menu.classList.add(
+
+
+    if (sideMenu) {
+
+        sideMenu.classList.add(
             "active"
         );
+
     }
+
+
     if (overlay) {
+
         overlay.classList.add(
             "active"
         );
+
     }
+
 }
+
+
 function closeMenu() {
-    const menu =
+
+    const sideMenu =
         document.getElementById(
             "sideMenu"
         );
+
     const overlay =
         document.getElementById(
             "menuOverlay"
         );
-    if (menu) {
-        menu.classList.remove(
+
+
+    if (sideMenu) {
+
+        sideMenu.classList.remove(
             "active"
         );
+
     }
+
+
     if (overlay) {
+
         overlay.classList.remove(
             "active"
         );
+
     }
+
 }
+
+
 // ============================================================
 // CHUYỂN TRANG
 // ============================================================
+
 function showPage(page) {
-    document
-        .querySelectorAll(".page")
-        .forEach(function (element) {
-            element.style.display =
+
+    const pages =
+        document.querySelectorAll(
+            ".page"
+        );
+
+
+    pages.forEach(
+        function (item) {
+
+            item.style.display =
                 "none";
-        });
-    let target = null;
-    // HOME
-    if (page === "home") {
+
+        }
+    );
+
+
+    let target =
+        null;
+
+
+    if (
+        page ===
+        "home"
+    ) {
+
         target =
             document.getElementById(
                 "home"
             );
+
     }
-    // THÊM KHÁCH
-    if (page === "addCustomer") {
+
+    else if (
+        page ===
+        "addCustomer"
+    ) {
+
         target =
             document.getElementById(
                 "addCustomer"
             );
+
     }
-    // DANH SÁCH
-    if (page === "customers") {
+
+    else if (
+        page ===
+        "customers"
+    ) {
+
         target =
             document.getElementById(
                 "customers"
             );
+
+        renderCustomers();
+
     }
-    // BẢN ĐỒ
-    if (page === "mapPage") {
+
+    else if (
+        page ===
+        "mapPage"
+    ) {
+
         target =
             document.getElementById(
                 "mapPage"
             );
+
     }
+
+
     if (target) {
+
         target.style.display =
             "block";
+
     }
-    // HOME
-    if (page === "home") {
-        updateStats();
-    }
-    // DANH SÁCH
-    if (page === "customers") {
-        openedCustomerId = null;
-        const searchInput =
-            document.getElementById(
-                "searchInput"
-            );
-        renderCustomers(
-            searchInput
-                ? searchInput.value
-                : ""
-        );
-    }
+
+
+    // ------------------------------------------
     // MAP
-    if (page === "mapPage") {
+    // ------------------------------------------
+
+    if (
+        page ===
+        "mapPage"
+    ) {
+
         setTimeout(
             function () {
+
                 initMap();
+
             },
             150
         );
+
     }
+
 }
+
+
 // ============================================================
 // GPS
 // ============================================================
+
 function getGPS() {
-    if (
-        !navigator.geolocation
-    ) {
-        alert(
-            "❌ Thiết bị không hỗ trợ GPS."
-        );
-        return;
-    }
+
     const status =
         document.getElementById(
             "gpsStatus"
         );
+
+    const button =
+        document.getElementById(
+            "gpsBtn"
+        );
+
+
+    if (
+        !navigator.geolocation
+    ) {
+
+        alert(
+            "❌ Điện thoại/trình duyệt không hỗ trợ GPS."
+        );
+
+        return;
+
+    }
+
+
     if (status) {
+
         status.textContent =
             "📍 Đang lấy vị trí...";
+
     }
+
+
+    if (button) {
+
+        button.disabled =
+            true;
+
+    }
+
+
     navigator.geolocation.getCurrentPosition(
+
         function (position) {
+
             latitude =
                 position.coords.latitude;
+
             longitude =
                 position.coords.longitude;
+
+
             if (status) {
-                status.textContent =
-                    "📍 " +
+
+                status.innerHTML =
+                    "✅ Đã lấy GPS<br>" +
                     latitude.toFixed(6) +
                     ", " +
                     longitude.toFixed(6);
+
             }
+
+
+            if (button) {
+
+                button.disabled =
+                    false;
+
+            }
+
         },
+
+
         function (error) {
-            console.error(error);
-            if (status) {
-                status.textContent =
-                    "❌ Không lấy được vị trí.";
-            }
-            alert(
-                "❌ Không lấy được GPS.\n\n" +
-                "Hãy cho phép trình duyệt truy cập vị trí."
+
+            console.error(
+                error
             );
+
+
+            let message =
+                "❌ Không lấy được vị trí.";
+
+
+            if (
+                error.code ===
+                1
+            ) {
+
+                message =
+                    "❌ Bạn chưa cho phép website sử dụng vị trí.";
+
+            }
+
+            else if (
+                error.code ===
+                2
+            ) {
+
+                message =
+                    "❌ Không xác định được vị trí.";
+
+            }
+
+            else if (
+                error.code ===
+                3
+            ) {
+
+                message =
+                    "❌ Lấy vị trí quá thời gian.";
+
+            }
+
+
+            if (status) {
+
+                status.textContent =
+                    message;
+
+            }
+
+
+            if (button) {
+
+                button.disabled =
+                    false;
+
+            }
+
         },
+
+
         {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
+            enableHighAccuracy:
+                true,
+
+            timeout:
+                15000,
+
+            maximumAge:
+                0
         }
+
     );
+
 }
+
+
 // ============================================================
 // XỬ LÝ ẢNH
 // ============================================================
+
 function handlePhoto(event) {
+
     const file =
         event.target.files &&
         event.target.files[0];
-    if (!file) return;
-    if (
-        !file.type.startsWith(
-            "image/"
-        )
-    ) {
-        alert(
-            "❌ Vui lòng chọn file ảnh."
-        );
+
+
+    if (!file) {
+
         return;
+
     }
+
+
+    const status =
+        document.getElementById(
+            "photoStatus"
+        );
+
+    const preview =
+        document.getElementById(
+            "photoPreview"
+        );
+
+
+    if (status) {
+
+        status.textContent =
+            "📷 Đang xử lý ảnh...";
+
+    }
+
+
     const reader =
         new FileReader();
+
+
     reader.onload =
-        function (e) {
+        function (event) {
+
             const img =
                 new Image();
+
+
             img.onload =
                 function () {
+
                     const maxSize =
                         1200;
+
+
                     let width =
                         img.width;
+
                     let height =
                         img.height;
+
+
                     if (
-                        width > maxSize ||
-                        height > maxSize
+                        width >
+                            maxSize ||
+                        height >
+                            maxSize
                     ) {
+
                         if (
-                            width > height
+                            width >
+                            height
                         ) {
+
                             height =
                                 height *
-                                (
-                                    maxSize /
-                                    width
-                                );
+                                maxSize /
+                                width;
+
                             width =
                                 maxSize;
+
                         } else {
+
                             width =
                                 width *
-                                (
-                                    maxSize /
-                                    height
-                                );
+                                maxSize /
+                                height;
+
                             height =
                                 maxSize;
+
                         }
+
                     }
+
+
                     const canvas =
                         document.createElement(
                             "canvas"
                         );
+
+
                     canvas.width =
                         Math.round(
                             width
                         );
+
                     canvas.height =
                         Math.round(
                             height
                         );
+
+
                     const ctx =
                         canvas.getContext(
                             "2d"
                         );
+
+
+                    if (!ctx) {
+
+                        if (status) {
+
+                            status.textContent =
+                                "❌ Không xử lý được ảnh.";
+
+                        }
+
+                        return;
+
+                    }
+
+
                     ctx.drawImage(
                         img,
                         0,
@@ -625,1248 +1227,2080 @@ function handlePhoto(event) {
                         canvas.width,
                         canvas.height
                     );
+
+
                     photoData =
                         canvas.toDataURL(
                             "image/jpeg",
                             0.70
                         );
-                    const preview =
-                        document.getElementById(
-                            "photoPreview"
-                        );
+
+
                     if (preview) {
+
                         preview.src =
                             photoData;
+
                         preview.style.display =
                             "block";
+
                     }
-                    const status =
-                        document.getElementById(
-                            "photoStatus"
-                        );
+
+
                     if (status) {
+
                         status.textContent =
-                            "✅ Đã chọn ảnh nhà";
+                            "✅ Đã chụp ảnh";
+
                     }
+
                 };
+
+
+            img.onerror =
+                function () {
+
+                    if (status) {
+
+                        status.textContent =
+                            "❌ Không đọc được ảnh.";
+
+                    }
+
+                };
+
+
             img.src =
-                e.target.result;
+                event.target.result;
+
         };
-    reader.readAsDataURL(file);
+
+
+    reader.onerror =
+        function () {
+
+            if (status) {
+
+                status.textContent =
+                    "❌ Không thể đọc ảnh.";
+
+            }
+
+        };
+
+
+    reader.readAsDataURL(
+        file
+    );
+
 }
+
+
 // ============================================================
 // LƯU KHÁCH HÀNG
 // ============================================================
+
 async function saveCustomer() {
-    if (!currentUser) {
-        alert(
-            "❌ Vui lòng đăng nhập."
-        );
-        return;
-    }
+
     const nameInput =
         document.getElementById(
             "name"
         );
+
     const addressInput =
         document.getElementById(
             "address"
         );
+
     const noteInput =
         document.getElementById(
             "note"
         );
+
+
     const name =
         nameInput
             ? nameInput.value.trim()
             : "";
+
+
     const address =
         addressInput
             ? addressInput.value.trim()
             : "";
+
+
     const note =
         noteInput
             ? noteInput.value.trim()
             : "";
+
+
     if (!name) {
+
         alert(
             "❌ Vui lòng nhập họ tên khách hàng."
         );
+
         return;
+
     }
+
+
     if (!address) {
+
         alert(
-            "❌ Vui lòng nhập địa chỉ."
+            "❌ Vui lòng nhập địa chỉ khách hàng."
         );
+
         return;
+
     }
-    const customerData = {
-        name: name,
-        address: address,
-        note: note,
-        latitude: latitude,
-        longitude: longitude,
-        photo_url: photoData,
-        created_by:
-            currentUser.id
-    };
+
+
+    if (!db) {
+
+        alert(
+            "❌ Supabase chưa sẵn sàng."
+        );
+
+        return;
+
+    }
+
+
     const saveBtn =
         document.getElementById(
             "saveBtn"
         );
+
+
+    const isEditing =
+        editingId !== null;
+
+
     if (saveBtn) {
-        saveBtn.disabled = true;
+
+        saveBtn.disabled =
+            true;
+
         saveBtn.textContent =
-            editingId
+            isEditing
                 ? "Đang cập nhật..."
                 : "Đang lưu...";
+
     }
+
+
     try {
-        // ----------------------------------------------------
-        // CẬP NHẬT
-        // ----------------------------------------------------
-        if (editingId) {
-            const {
-                error
-            } =
+
+        const customerData = {
+
+            name:
+                name,
+
+            address:
+                address,
+
+            note:
+                note,
+
+            latitude:
+                latitude,
+
+            longitude:
+                longitude,
+
+            photo_url:
+                photoData
+
+        };
+
+
+        // ================================================
+        // UPDATE
+        // ================================================
+
+        if (isEditing) {
+
+            const result =
                 await db
                     .from("customers")
-                    .update(customerData)
+                    .update(
+                        customerData
+                    )
                     .eq(
                         "id",
                         editingId
                     );
-            if (error) {
-                console.error(error);
-                alert(
-                    "❌ Lỗi cập nhật:\n\n" +
-                    error.message
+
+
+            if (result.error) {
+
+                console.error(
+                    result.error
                 );
+
+                alert(
+                    "❌ Cập nhật thất bại:\n\n" +
+                    result.error.message
+                );
+
                 return;
+
             }
+
+
             alert(
                 "✅ Đã cập nhật khách hàng."
             );
+
         }
-        // ----------------------------------------------------
-        // THÊM MỚI
-        // ----------------------------------------------------
+
+
+        // ================================================
+        // INSERT
+        // ================================================
+
         else {
-            const {
-                error
-            } =
+
+            const result =
                 await db
                     .from("customers")
-                    .insert(
-                        [customerData]
-                    );
-            if (error) {
-                console.error(error);
-                alert(
-                    "❌ Lỗi lưu khách hàng:\n\n" +
-                    error.message
+                    .insert([
+                        customerData
+                    ]);
+
+
+            if (result.error) {
+
+                console.error(
+                    result.error
                 );
+
+
+                let message =
+                    result.error.message;
+
+
+                if (
+                    message.includes(
+                        "phone"
+                    )
+                ) {
+
+                    message +=
+                        "\n\nBạn cần chạy SQL:\n\n" +
+                        "alter table public.customers\n" +
+                        "alter column phone drop not null;";
+
+                }
+
+
+                if (
+                    message.includes(
+                        "photo_url"
+                    )
+                ) {
+
+                    message +=
+                        "\n\nBạn cần chạy SQL:\n\n" +
+                        "alter table public.customers\n" +
+                        "add column if not exists photo_url text;";
+
+                }
+
+
+                alert(
+                    "❌ Lưu khách hàng thất bại:\n\n" +
+                    message
+                );
+
                 return;
+
             }
+
+
             alert(
                 "✅ Đã lưu khách hàng."
             );
+
         }
+
+
         resetForm();
+
         await loadCustomers();
-        showPage("customers");
-    } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent =
-                "Lưu khách hàng";
-        }
-    }
-}
-// ============================================================
-// TẢI KHÁCH HÀNG
-// ============================================================
-async function loadCustomers() {
-    const container =
-        document.getElementById(
-            "customerList"
+
+        showPage(
+            "customers"
         );
-    if (container) {
-        container.innerHTML = `
-            <div class="empty-state">
-                ⏳ Đang tải dữ liệu...
-            </div>
-        `;
-    }
-    const {
-        data,
-        error
-    } =
-        await db
-            .from("customers")
-            .select("*")
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-    if (error) {
-        console.error(error);
-        if (container) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    ❌ Không thể tải dữ liệu.<br><br>
-                    ${escapeHTML(error.message)}
-                </div>
-            `;
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Có lỗi xảy ra:\n\n" +
+            error.message
+        );
+
+    } finally {
+
+        if (saveBtn) {
+
+            saveBtn.disabled =
+                false;
+
+            saveBtn.textContent =
+                editingId
+                    ? "Cập nhật khách hàng"
+                    : "Lưu khách hàng";
+
         }
-        return;
+
     }
-    customers =
-        data || [];
-    renderCustomers();
-    updateStats();
-    if (map) {
-        loadMapMarkers();
-    }
+
 }
+
+
+// ============================================================
+// LOAD KHÁCH HÀNG
+// ============================================================
+
+async function loadCustomers() {
+
+    if (!db) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const result =
+            await db
+                .from("customers")
+                .select("*")
+                .order(
+                    "created_at",
+                    {
+                        ascending:
+                            false
+                    }
+                );
+
+
+        if (result.error) {
+
+            console.error(
+                "Lỗi tải khách hàng:",
+                result.error
+            );
+
+
+            const list =
+                document.getElementById(
+                    "customerList"
+                );
+
+
+            if (list) {
+
+                list.innerHTML = `
+                    <div class="empty-state">
+                        ❌ Không tải được dữ liệu khách hàng.
+                        <br><br>
+                        ${escapeHTML(
+                            result.error.message
+                        )}
+                    </div>
+                `;
+
+            }
+
+            return;
+
+        }
+
+
+        customers =
+            Array.isArray(
+                result.data
+            )
+                ? result.data
+                : [];
+
+
+        renderCustomers();
+
+        updateStats();
+
+
+        if (map) {
+
+            loadMapMarkers();
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Lỗi loadCustomers:",
+            error
+        );
+
+    }
+
+}
+
+
 // ============================================================
 // RENDER DANH SÁCH
 // ============================================================
+
 function renderCustomers(
     searchText = ""
 ) {
-    const container =
+
+    const list =
         document.getElementById(
             "customerList"
         );
-    if (!container) return;
+
+
+    if (!list) {
+
+        return;
+
+    }
+
+
     const keyword =
-        String(searchText || "")
+        String(
+            searchText ||
+            ""
+        )
             .trim()
             .toLowerCase();
+
+
     const filtered =
         customers.filter(
             function (customer) {
+
                 if (!keyword) {
+
                     return true;
+
                 }
+
+
+                const name =
+                    String(
+                        customer.name ||
+                        ""
+                    )
+                        .toLowerCase();
+
+
+                const address =
+                    String(
+                        customer.address ||
+                        ""
+                    )
+                        .toLowerCase();
+
+
+                const note =
+                    String(
+                        customer.note ||
+                        ""
+                    )
+                        .toLowerCase();
+
+
                 return (
-                    String(
-                        customer.name || ""
+                    name.includes(
+                        keyword
+                    ) ||
+                    address.includes(
+                        keyword
+                    ) ||
+                    note.includes(
+                        keyword
                     )
-                        .toLowerCase()
-                        .includes(keyword)
-                    ||
-                    String(
-                        customer.address || ""
-                    )
-                        .toLowerCase()
-                        .includes(keyword)
-                    ||
-                    String(
-                        customer.note || ""
-                    )
-                        .toLowerCase()
-                        .includes(keyword)
                 );
+
             }
         );
+
+
     if (
-        filtered.length === 0
+        filtered.length ===
+        0
     ) {
-        container.innerHTML = `
+
+        list.innerHTML = `
             <div class="empty-state">
-                📭 Không tìm thấy khách hàng
+                ${
+                    keyword
+                        ? "🔍 Không tìm thấy khách hàng."
+                        : "👥 Chưa có khách hàng."
+                }
             </div>
         `;
+
         return;
+
     }
-    container.innerHTML =
+
+
+    list.innerHTML =
         filtered
             .map(
                 createCustomerCard
             )
             .join("");
+
 }
+
+
 // ============================================================
-// TẠO CARD
+// CARD KHÁCH HÀNG
 // ============================================================
+
 function createCustomerCard(
     customer
 ) {
+
     const id =
-        String(customer.id);
+        customer.id;
+
+
     const isOpen =
-        String(openedCustomerId) === id;
-    // ========================================================
-    // DẠNG THU GỌN
-    // ========================================================
-    if (!isOpen) {
-        return `
-            <div
-                class="customer-card compact-card"
-                onclick="toggleCustomerDetail('${escapeHTML(id)}')"
-            >
-                <div class="customer-summary">
-                    <div class="customer-summary-text">
-                        <div class="customer-name">
-                            👤 ${escapeHTML(
-                                customer.name ||
-                                "Chưa có tên"
-                            )}
-                        </div>
-                        <div class="customer-address">
-                            📍 ${escapeHTML(
-                                customer.address ||
-                                "Chưa có địa chỉ"
-                            )}
-                        </div>
-                    </div>
-                    <div class="customer-arrow">
-                        ›
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    // ========================================================
-    // DẠNG CHI TIẾT
-    // ========================================================
-    return `
+        openedCustomerId !==
+            null &&
+        String(
+            openedCustomerId
+        ) ===
+            String(id);
+
+
+    const name =
+        escapeHTML(
+            customer.name ||
+            "Không có tên"
+        );
+
+
+    const address =
+        escapeHTML(
+            customer.address ||
+            "Chưa có địa chỉ"
+        );
+
+
+    let html = `
+
         <div
-            class="customer-card compact-card"
+            class="customer-card compact-card ${
+                isOpen
+                    ? "expanded"
+                    : ""
+            }"
         >
-            <!-- HEADER -->
+
             <div
                 class="customer-summary"
-                onclick="toggleCustomerDetail('${escapeHTML(id)}')"
+                onclick="toggleCustomerDetail('${escapeAttr(id)}')"
             >
+
                 <div class="customer-summary-text">
+
                     <div class="customer-name">
-                        👤 ${escapeHTML(
-                            customer.name ||
-                            "Chưa có tên"
-                        )}
+                        👤 ${name}
                     </div>
+
                     <div class="customer-address">
-                        📍 ${escapeHTML(
-                            customer.address ||
-                            "Chưa có địa chỉ"
-                        )}
+                        📍 ${address}
                     </div>
+
                 </div>
+
+
                 <div class="customer-arrow">
-                    ▲
-                </div>
-            </div>
-            <!-- CHI TIẾT -->
-            <div class="customer-detail">
-                <div class="detail-row">
-                    <strong>📍 Địa chỉ</strong>
-                    <span>
-                        ${escapeHTML(
-                            customer.address ||
-                            "Chưa có địa chỉ"
-                        )}
-                    </span>
-                </div>
-                ${
-                    customer.note
-                        ? `
-                            <div class="detail-row">
-                                <strong>📝 Ghi chú</strong>
-                                <span>
-                                    ${escapeHTML(
-                                        customer.note
-                                    )}
-                                </span>
-                            </div>
-                        `
-                        : ""
-                }
-                ${
-                    customer.latitude != null &&
-                    customer.longitude != null
-                        ? `
-                            <div class="detail-row">
-                                <strong>📌 GPS</strong>
-                                <span>
-                                    ${Number(
-                                        customer.latitude
-                                    ).toFixed(6)},
-                                    ${Number(
-                                        customer.longitude
-                                    ).toFixed(6)}
-                                </span>
-                            </div>
-                        `
-                        : `
-                            <div class="detail-row">
-                                <strong>📌 GPS</strong>
-                                <span>
-                                    Chưa có vị trí
-                                </span>
-                            </div>
-                        `
-                }
-                <!-- ẢNH -->
-                ${
-                    customer.photo_url
-                        ? `
-                            <div class="customer-photo-box">
-                                <strong>
-                                    🏠 Ảnh nhà
-                                </strong>
-                                <img
-                                    class="customer-photo"
-                                    src="${escapeHTML(
-                                        customer.photo_url
-                                    )}"
-                                    alt="Ảnh nhà"
-                                    onclick="event.stopPropagation(); showPhoto('${escapeHTML(id)}')"
-                                >
-                                <div class="photo-hint">
-                                    👆 Bấm vào ảnh để xem lớn
-                                </div>
-                            </div>
-                        `
-                        : `
-                            <div class="customer-photo-box">
-                                <div class="empty-state">
-                                    🏠 Chưa có ảnh nhà
-                                </div>
-                            </div>
-                        `
-                }
-                <!-- NÚT -->
-                <div class="customer-actions">
                     ${
-                        customer.latitude != null &&
-                        customer.longitude != null
+                        isOpen
+                            ? "▲"
+                            : "▼"
+                    }
+                </div>
+
+            </div>
+    `;
+
+
+    // ========================================================
+    // DETAIL
+    // ========================================================
+
+    if (isOpen) {
+
+        const note =
+            escapeHTML(
+                customer.note ||
+                "Không có ghi chú"
+            );
+
+
+        const hasGPS =
+            customer.latitude !==
+                null &&
+            customer.latitude !==
+                undefined &&
+            customer.longitude !==
+                null &&
+            customer.longitude !==
+                undefined;
+
+
+        html += `
+
+            <div class="customer-detail">
+
+                <div class="detail-row">
+
+                    <strong>
+                        👤 Họ tên:
+                    </strong>
+
+                    <span>
+                        ${name}
+                    </span>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <strong>
+                        📍 Địa chỉ:
+                    </strong>
+
+                    <span>
+                        ${address}
+                    </span>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <strong>
+                        📝 Ghi chú:
+                    </strong>
+
+                    <span>
+                        ${note}
+                    </span>
+
+                </div>
+        `;
+
+
+        // ====================================================
+        // GPS
+        // ====================================================
+
+        if (hasGPS) {
+
+            html += `
+
+                <div class="detail-row">
+
+                    <strong>
+                        🌐 GPS:
+                    </strong>
+
+                    <span>
+                        ${Number(
+                            customer.latitude
+                        ).toFixed(6)},
+                        ${Number(
+                            customer.longitude
+                        ).toFixed(6)}
+                    </span>
+
+                </div>
+
+            `;
+
+        } else {
+
+            html += `
+
+                <div class="detail-row">
+
+                    <strong>
+                        🌐 GPS:
+                    </strong>
+
+                    <span>
+                        Chưa có vị trí
+                    </span>
+
+                </div>
+
+            `;
+
+        }
+
+
+        // ====================================================
+        // PHOTO
+        // ====================================================
+
+        if (
+            customer.photo_url
+        ) {
+
+            html += `
+
+                <div class="customer-photo-box">
+
+                    <img
+                        src="${escapeAttr(
+                            customer.photo_url
+                        )}"
+                        class="customer-photo"
+                        alt="Ảnh nhà khách hàng"
+                        onclick="showPhoto('${escapeAttr(id)}')"
+                    >
+
+                    <div class="photo-hint">
+                        👆 Chạm vào ảnh để xem lớn
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+
+
+        // ====================================================
+        // BUTTONS
+        // ====================================================
+
+        html += `
+
+                <div class="customer-actions">
+
+                    ${
+                        hasGPS
                             ? `
                                 <button
-                                    class="map-btn"
-                                    onclick="event.stopPropagation(); startNavigation(${Number(customer.latitude)}, ${Number(customer.longitude)})"
+                                    type="button"
+                                    class="action-btn map-btn"
+                                    onclick="event.stopPropagation(); openCustomerMap('${escapeAttr(id)}')"
                                 >
-                                    🚗 Chỉ đường
+                                    🗺️ Bản đồ
                                 </button>
                             `
-                            : `
-                                <button
-                                    class="map-btn"
-                                    disabled
-                                >
-                                    📍 Chưa có GPS
-                                </button>
-                            `
+                            : ""
                     }
+
+
+                    ${
+                        hasGPS
+                            ? `
+                                <button
+                                    type="button"
+                                    class="action-btn nav-btn"
+                                    onclick="event.stopPropagation(); navigateToCustomer('${escapeAttr(id)}')"
+                                >
+                                    🧭 Chỉ đường
+                                </button>
+                            `
+                            : ""
+                    }
+
+
                     <button
-                        class="edit-btn"
-                        onclick="event.stopPropagation(); editCustomer('${escapeHTML(id)}')"
+                        type="button"
+                        class="action-btn edit-btn"
+                        onclick="event.stopPropagation(); editCustomer('${escapeAttr(id)}')"
                     >
                         ✏️ Sửa
                     </button>
+
+
                     <button
-                        class="photo-btn"
-                        onclick="event.stopPropagation(); openCustomerMap('${escapeHTML(id)}')"
-                    >
-                        🗺️ Bản đồ
-                    </button>
-                    <button
-                        class="delete-btn"
-                        onclick="event.stopPropagation(); deleteCustomer('${escapeHTML(id)}')"
+                        type="button"
+                        class="action-btn delete-btn"
+                        onclick="event.stopPropagation(); deleteCustomer('${escapeAttr(id)}')"
                     >
                         🗑️ Xóa
                     </button>
+
                 </div>
+
             </div>
+
+        `;
+
+    }
+
+
+    html += `
+
         </div>
+
     `;
+
+
+    return html;
+
 }
+
+
 // ============================================================
 // MỞ / ĐÓNG CHI TIẾT
 // ============================================================
+
 function toggleCustomerDetail(
     id
 ) {
+
     if (
-        String(openedCustomerId) ===
-        String(id)
+        openedCustomerId !==
+            null &&
+        String(
+            openedCustomerId
+        ) ===
+            String(id)
     ) {
-        openedCustomerId = null;
+
+        openedCustomerId =
+            null;
+
     } else {
-        openedCustomerId = id;
+
+        openedCustomerId =
+            id;
+
     }
+
+
     const searchInput =
         document.getElementById(
             "searchInput"
         );
+
+
     renderCustomers(
         searchInput
             ? searchInput.value
             : ""
     );
+
 }
+
+
 // ============================================================
 // XEM ẢNH LỚN
 // ============================================================
+
 function showPhoto(id) {
+
     const customer =
         customers.find(
             function (item) {
+
                 return (
-                    String(item.id) ===
+                    String(
+                        item.id
+                    ) ===
                     String(id)
                 );
+
             }
         );
+
+
     if (
         !customer ||
         !customer.photo_url
     ) {
+
         alert(
-            "❌ Không có ảnh."
+            "❌ Khách hàng chưa có ảnh."
         );
+
         return;
+
     }
-    const newWindow =
-        window.open(
-            "",
-            "_blank"
+
+
+    // --------------------------------------------------------
+    // TẠO MODAL
+    // --------------------------------------------------------
+
+    const oldModal =
+        document.getElementById(
+            "photoModal"
         );
-    if (!newWindow) {
-        alert(
-            "⚠️ Trình duyệt chặn cửa sổ xem ảnh."
-        );
-        return;
+
+
+    if (oldModal) {
+
+        oldModal.remove();
+
     }
-    newWindow.document.write(`
-        <!DOCTYPE html>
-        <html lang="vi">
-        <head>
-            <meta charset="UTF-8">
-            <meta
-                name="viewport"
-                content="width=device-width,initial-scale=1"
-            >
-            <title>
-                ${escapeHTML(
-                    customer.name ||
-                    "Ảnh nhà"
-                )}
-            </title>
-            <style>
-                * {
-                    box-sizing:border-box;
-                }
-                body {
-                    margin:0;
-                    background:#000;
-                    min-height:100vh;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    padding:10px;
-                }
-                img {
-                    max-width:100%;
-                    max-height:96vh;
-                    object-fit:contain;
-                }
-            </style>
-        </head>
-        <body>
+
+
+    const modal =
+        document.createElement(
+            "div"
+        );
+
+
+    modal.id =
+        "photoModal";
+
+
+    modal.innerHTML = `
+
+        <div
+            style="
+                position:fixed;
+                inset:0;
+                background:rgba(0,0,0,.92);
+                z-index:99999;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                padding:15px;
+            "
+            onclick="this.parentElement.remove()"
+        >
+
             <img
-                src="${escapeHTML(
+                src="${escapeAttr(
                     customer.photo_url
                 )}"
-                alt="Ảnh nhà"
+                alt="Ảnh nhà khách hàng"
+                style="
+                    max-width:100%;
+                    max-height:92vh;
+                    object-fit:contain;
+                    border-radius:10px;
+                "
+                onclick="event.stopPropagation()"
             >
-        </body>
-        </html>
-    `);
-    newWindow.document.close();
-}
-// ============================================================
-// CHỈ ĐƯỜNG
-// ============================================================
-function startNavigation(
-    lat,
-    lng
-) {
-    const latitudeValue =
-        Number(lat);
-    const longitudeValue =
-        Number(lng);
-    if (
-        !Number.isFinite(
-            latitudeValue
-        ) ||
-        !Number.isFinite(
-            longitudeValue
-        )
-    ) {
-        alert(
-            "❌ GPS không hợp lệ."
-        );
-        return;
-    }
-    const url =
-        "https://www.google.com/maps/dir/?api=1" +
-        "&destination=" +
-        latitudeValue +
-        "," +
-        longitudeValue;
-    window.open(
-        url,
-        "_blank"
+
+            <button
+                type="button"
+                onclick="this.parentElement.parentElement.remove()"
+                style="
+                    position:absolute;
+                    top:15px;
+                    right:15px;
+                    width:42px;
+                    height:42px;
+                    border:0;
+                    border-radius:50%;
+                    background:white;
+                    color:#111827;
+                    font-size:22px;
+                    font-weight:bold;
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        modal
     );
+
 }
+
+
 // ============================================================
 // SỬA KHÁCH HÀNG
 // ============================================================
-function editCustomer(
-    id
-) {
+
+function editCustomer(id) {
+
     const customer =
         customers.find(
             function (item) {
+
                 return (
-                    String(item.id) ===
+                    String(
+                        item.id
+                    ) ===
                     String(id)
                 );
+
             }
         );
+
+
     if (!customer) {
+
         alert(
             "❌ Không tìm thấy khách hàng."
         );
+
         return;
+
     }
+
+
     editingId =
         customer.id;
+
+
     const nameInput =
         document.getElementById(
             "name"
         );
+
     const addressInput =
         document.getElementById(
             "address"
         );
+
     const noteInput =
         document.getElementById(
             "note"
         );
+
+
     if (nameInput) {
+
         nameInput.value =
-            customer.name || "";
+            customer.name ||
+            "";
+
     }
+
+
     if (addressInput) {
+
         addressInput.value =
-            customer.address || "";
+            customer.address ||
+            "";
+
     }
+
+
     if (noteInput) {
+
         noteInput.value =
-            customer.note || "";
+            customer.note ||
+            "";
+
     }
+
+
     latitude =
-        customer.latitude != null
+        customer.latitude !==
+            null &&
+        customer.latitude !==
+            undefined
             ? Number(
                 customer.latitude
             )
             : null;
+
+
     longitude =
-        customer.longitude != null
+        customer.longitude !==
+            null &&
+        customer.longitude !==
+            undefined
             ? Number(
                 customer.longitude
             )
             : null;
+
+
     photoData =
-        customer.photo_url || null;
-    // GPS STATUS
+        customer.photo_url ||
+        null;
+
+
+    // ------------------------------------------
+    // GPS
+    // ------------------------------------------
+
     const gpsStatus =
         document.getElementById(
             "gpsStatus"
         );
+
+
     if (gpsStatus) {
+
         if (
-            latitude != null &&
-            longitude != null
+            latitude !== null &&
+            longitude !== null
         ) {
-            gpsStatus.textContent =
-                "📍 " +
+
+            gpsStatus.innerHTML =
+                "✅ Đã có GPS<br>" +
                 latitude.toFixed(6) +
                 ", " +
                 longitude.toFixed(6);
+
         } else {
+
             gpsStatus.textContent =
-                "📍 Chưa có GPS";
+                "Chưa lấy vị trí";
+
         }
+
     }
+
+
+    // ------------------------------------------
     // PHOTO
+    // ------------------------------------------
+
     const preview =
         document.getElementById(
             "photoPreview"
         );
-    if (preview) {
-        if (photoData) {
-            preview.src =
-                photoData;
-            preview.style.display =
-                "block";
-        } else {
-            preview.src = "";
-            preview.style.display =
-                "none";
-        }
-    }
+
     const photoStatus =
         document.getElementById(
             "photoStatus"
         );
+
+
+    if (preview) {
+
+        if (photoData) {
+
+            preview.src =
+                photoData;
+
+            preview.style.display =
+                "block";
+
+        } else {
+
+            preview.src =
+                "";
+
+            preview.style.display =
+                "none";
+
+        }
+
+    }
+
+
     if (photoStatus) {
+
         photoStatus.textContent =
             photoData
-                ? "✅ Đang sử dụng ảnh hiện tại"
-                : "Chưa có ảnh";
+                ? "✅ Đã có ảnh"
+                : "Chưa chụp ảnh";
+
     }
+
+
+    const saveBtn =
+        document.getElementById(
+            "saveBtn"
+        );
+
+
+    if (saveBtn) {
+
+        saveBtn.textContent =
+            "Cập nhật khách hàng";
+
+    }
+
+
     showPage(
         "addCustomer"
     );
+
 }
+
+
 // ============================================================
 // XÓA KHÁCH HÀNG
 // ============================================================
+
 async function deleteCustomer(
     id
 ) {
+
     const customer =
         customers.find(
             function (item) {
+
                 return (
-                    String(item.id) ===
+                    String(
+                        item.id
+                    ) ===
                     String(id)
                 );
+
             }
         );
-    const customerName =
-        customer
-            ? customer.name
-            : "khách hàng";
+
+
+    if (!customer) {
+
+        return;
+
+    }
+
+
     const confirmed =
         confirm(
-            'Bạn có chắc muốn xóa "' +
-            customerName +
-            '" không?'
+            "Bạn có chắc muốn xóa khách hàng:\n\n" +
+            (
+                customer.name ||
+                ""
+            )
         );
+
+
     if (!confirmed) {
+
         return;
+
     }
-    const {
-        error
-    } =
-        await db
-            .from("customers")
-            .delete()
-            .eq(
-                "id",
-                id
-            );
-    if (error) {
-        console.error(error);
+
+
+    if (!db) {
+
         alert(
-            "❌ Không thể xóa:\n\n" +
+            "❌ Supabase chưa sẵn sàng."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const result =
+            await db
+                .from("customers")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                );
+
+
+        if (result.error) {
+
+            console.error(
+                result.error
+            );
+
+            alert(
+                "❌ Xóa thất bại:\n\n" +
+                result.error.message
+            );
+
+            return;
+
+        }
+
+
+        if (
+            openedCustomerId !==
+                null &&
+            String(
+                openedCustomerId
+            ) ===
+                String(id)
+        ) {
+
+            openedCustomerId =
+                null;
+
+        }
+
+
+        alert(
+            "✅ Đã xóa khách hàng."
+        );
+
+
+        await loadCustomers();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Có lỗi khi xóa khách hàng:\n\n" +
             error.message
         );
-        return;
+
     }
-    openedCustomerId = null;
-    alert(
-        "✅ Đã xóa khách hàng."
-    );
-    await loadCustomers();
+
 }
+
+
 // ============================================================
 // MỞ BẢN ĐỒ KHÁCH HÀNG
 // ============================================================
+
 function openCustomerMap(
     id
 ) {
+
     const customer =
         customers.find(
             function (item) {
+
                 return (
-                    String(item.id) ===
+                    String(
+                        item.id
+                    ) ===
                     String(id)
                 );
+
             }
         );
+
+
     if (!customer) {
-        alert(
-            "❌ Không tìm thấy khách hàng."
-        );
+
         return;
+
     }
+
+
     if (
-        customer.latitude == null ||
-        customer.longitude == null
+        customer.latitude ===
+            null ||
+        customer.latitude ===
+            undefined ||
+        customer.longitude ===
+            null ||
+        customer.longitude ===
+            undefined
     ) {
+
         alert(
             "❌ Khách hàng này chưa có GPS."
         );
+
         return;
+
     }
+
+
     showPage(
         "mapPage"
     );
+
+
     setTimeout(
         function () {
-            if (!map) return;
-            const lat =
-                Number(
-                    customer.latitude
+
+            initMap();
+
+
+            if (map) {
+
+                map.setView(
+                    [
+                        Number(
+                            customer.latitude
+                        ),
+
+                        Number(
+                            customer.longitude
+                        )
+                    ],
+
+                    17
                 );
-            const lng =
-                Number(
-                    customer.longitude
-                );
-            map.setView(
-                [lat, lng],
-                17
-            );
-            mapMarkers.forEach(
-                function (marker) {
-                    const position =
-                        marker.getLatLng();
-                    if (
-                        Math.abs(
-                            position.lat -
-                            lat
-                        ) < 0.000001
-                        &&
-                        Math.abs(
-                            position.lng -
-                            lng
-                        ) < 0.000001
-                    ) {
-                        marker.openPopup();
-                    }
-                }
-            );
+
+            }
+
         },
-        400
+        250
     );
+
 }
+
+
 // ============================================================
-// KHỞI TẠO BẢN ĐỒ
+// CHỈ ĐƯỜNG
 // ============================================================
+
+function navigateToCustomer(
+    id
+) {
+
+    const customer =
+        customers.find(
+            function (item) {
+
+                return (
+                    String(
+                        item.id
+                    ) ===
+                    String(id)
+                );
+
+            }
+        );
+
+
+    if (!customer) {
+
+        return;
+
+    }
+
+
+    if (
+        customer.latitude ===
+            null ||
+        customer.latitude ===
+            undefined ||
+        customer.longitude ===
+            null ||
+        customer.longitude ===
+            undefined
+    ) {
+
+        alert(
+            "❌ Khách hàng chưa có GPS."
+        );
+
+        return;
+
+    }
+
+
+    const lat =
+        Number(
+            customer.latitude
+        );
+
+
+    const lng =
+        Number(
+            customer.longitude
+        );
+
+
+    const url =
+        "https://www.google.com/maps/dir/?api=1" +
+        "&destination=" +
+        encodeURIComponent(
+            lat + "," + lng
+        );
+
+
+    window.open(
+        url,
+        "_blank"
+    );
+
+}
+
+
+// ============================================================
+// KHỞI TẠO MAP
+// ============================================================
+
 function initMap() {
+
     const mapElement =
         document.getElementById(
             "map"
         );
+
+
     if (!mapElement) {
+
         return;
+
     }
+
+
+    // ------------------------------------------
+    // MAP ĐÃ TỒN TẠI
+    // ------------------------------------------
+
+    if (map) {
+
+        setTimeout(
+            function () {
+
+                map.invalidateSize();
+
+            },
+            100
+        );
+
+        return;
+
+    }
+
+
+    // ------------------------------------------
+    // KIỂM TRA LEAFLET
+    // ------------------------------------------
+
     if (
         typeof L ===
         "undefined"
     ) {
-        alert(
-            "❌ Không tải được Leaflet."
+
+        console.error(
+            "Leaflet chưa được tải."
         );
+
+
+        mapElement.innerHTML = `
+
+            <div
+                style="
+                    padding:20px;
+                    text-align:center;
+                "
+            >
+                ❌ Không tải được bản đồ.
+            </div>
+
+        `;
+
+
         return;
+
     }
-    if (map) {
-        setTimeout(
-            function () {
-                map.invalidateSize();
-                loadMapMarkers();
-            },
-            100
-        );
-        return;
-    }
+
+
+    // ------------------------------------------
+    // TẠO MAP
+    // ------------------------------------------
+
     map =
         L.map(
             "map"
         ).setView(
             [
-                10.0452,
-                105.7469
+                10.4600,
+                105.6300
             ],
-            12
+            13
         );
+
+
     L.tileLayer(
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
-            maxZoom: 19,
+
+            maxZoom:
+                19,
+
             attribution:
                 "&copy; OpenStreetMap"
+
         }
-    ).addTo(map);
+    ).addTo(
+        map
+    );
+
+
+    loadMapMarkers();
+
+
     setTimeout(
         function () {
-            map.invalidateSize();
+
+            if (map) {
+
+                map.invalidateSize();
+
+            }
+
         },
         200
     );
-    loadMapMarkers();
+
 }
+
+
 // ============================================================
-// MARKER BẢN ĐỒ
+// MARKER
 // ============================================================
+
 function loadMapMarkers() {
-    if (!map) return;
+
+    if (!map) {
+
+        return;
+
+    }
+
+
+    // ------------------------------------------
+    // XÓA MARKER CŨ
+    // ------------------------------------------
+
     mapMarkers.forEach(
         function (marker) {
+
             map.removeLayer(
                 marker
             );
+
         }
     );
+
+
     mapMarkers = [];
-    customers
-        .filter(
-            function (customer) {
-                return (
-                    customer.latitude != null &&
-                    customer.longitude != null
-                );
+
+
+    // ------------------------------------------
+    // TẠO MARKER
+    // ------------------------------------------
+
+    customers.forEach(
+        function (customer) {
+
+            if (
+                customer.latitude ===
+                    null ||
+                customer.latitude ===
+                    undefined ||
+                customer.longitude ===
+                    null ||
+                customer.longitude ===
+                    undefined
+            ) {
+
+                return;
+
             }
-        )
-        .forEach(
-            function (customer) {
-                const lat =
-                    Number(
-                        customer.latitude
-                    );
-                const lng =
-                    Number(
-                        customer.longitude
-                    );
-                if (
-                    !Number.isFinite(lat) ||
-                    !Number.isFinite(lng)
-                ) {
-                    return;
-                }
-                let icon;
-                // ------------------------------------------------
-                // CÓ ẢNH
-                // ------------------------------------------------
-                if (
-                    customer.photo_url
-                ) {
-                    icon =
-                        L.divIcon({
-                            className:
-                                "customer-map-icon",
-                            html: `
-                                <div style="
-                                    width:42px;
-                                    height:42px;
-                                    border-radius:50%;
-                                    overflow:hidden;
-                                    background:#fff;
-                                    border:3px solid #fff;
-                                    box-shadow:0 2px 8px rgba(0,0,0,.35);
-                                ">
-                                    <img
-                                        src="${escapeHTML(
-                                            customer.photo_url
-                                        )}"
-                                        style="
-                                            width:100%;
-                                            height:100%;
-                                            object-fit:cover;
-                                            display:block;
-                                        "
-                                    >
-                                </div>
-                            `,
-                            iconSize:
-                                [48, 48],
-                            iconAnchor:
-                                [24, 24],
-                            popupAnchor:
-                                [0, -24]
-                        });
-                }
-                // ------------------------------------------------
-                // KHÔNG CÓ ẢNH
-                // ------------------------------------------------
-                else {
-                    icon =
-                        L.divIcon({
-                            className:
-                                "customer-map-icon",
-                            html: `
-                                <div style="
-                                    width:36px;
-                                    height:36px;
-                                    border-radius:50%;
-                                    background:#2563eb;
-                                    border:3px solid #fff;
-                                    box-shadow:0 2px 8px rgba(0,0,0,.35);
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    font-size:18px;
-                                ">
-                                    📍
-                                </div>
-                            `,
-                            iconSize:
-                                [42, 42],
-                            iconAnchor:
-                                [21, 21],
-                            popupAnchor:
-                                [0, -21]
-                        });
-                }
-                const marker =
-                    L.marker(
-                        [lat, lng],
-                        {
-                            icon:
-                                icon
-                        }
-                    )
-                    .addTo(map);
-                marker.bindPopup(`
-                    <div style="
-                        min-width:220px;
-                        max-width:280px;
-                    ">
-                        ${
-                            customer.photo_url
-                                ? `
-                                    <img
-                                        src="${escapeHTML(
-                                            customer.photo_url
-                                        )}"
-                                        style="
-                                            width:100%;
-                                            max-height:180px;
-                                            object-fit:cover;
-                                            border-radius:10px;
-                                            display:block;
-                                            margin-bottom:10px;
-                                        "
-                                    >
-                                `
-                                : ""
-                        }
-                        <div style="
-                            font-size:17px;
-                            font-weight:700;
-                            margin-bottom:6px;
-                        ">
-                            ${escapeHTML(
-                                customer.name ||
-                                "Chưa có tên"
-                            )}
-                        </div>
-                        <div style="
-                            font-size:14px;
-                            margin-bottom:10px;
-                        ">
-                            📍 ${escapeHTML(
-                                customer.address ||
-                                "Chưa có địa chỉ"
-                            )}
-                        </div>
-                        ${
-                            customer.note
-                                ? `
-                                    <div style="
-                                        font-size:14px;
-                                        margin-bottom:10px;
-                                    ">
-                                        📝 ${escapeHTML(
-                                            customer.note
-                                        )}
-                                    </div>
-                                `
-                                : ""
-                        }
-                        <button
-                            onclick="startNavigation(${lat},${lng})"
-                            style="
-                                width:100%;
-                                border:0;
-                                border-radius:8px;
-                                padding:10px 12px;
-                                background:#2563eb;
-                                color:#fff;
-                                font-weight:600;
-                                cursor:pointer;
-                            "
-                        >
-                            🚗 Chỉ đường
-                        </button>
-                    </div>
-                `);
-                mapMarkers.push(
-                    marker
+
+
+            const lat =
+                Number(
+                    customer.latitude
                 );
+
+
+            const lng =
+                Number(
+                    customer.longitude
+                );
+
+
+            if (
+                Number.isNaN(
+                    lat
+                ) ||
+                Number.isNaN(
+                    lng
+                )
+            ) {
+
+                return;
+
             }
-        );
+
+
+            const marker =
+                L.marker(
+                    [
+                        lat,
+                        lng
+                    ]
+                ).addTo(
+                    map
+                );
+
+
+            const name =
+                escapeHTML(
+                    customer.name ||
+                    "Khách hàng"
+                );
+
+
+            const address =
+                escapeHTML(
+                    customer.address ||
+                    ""
+                );
+
+
+            marker.bindPopup(`
+
+                <div
+                    style="
+                        min-width:180px;
+                    "
+                >
+
+                    <strong>
+                        👤 ${name}
+                    </strong>
+
+                    <br>
+
+                    <span>
+                        📍 ${address}
+                    </span>
+
+                    <br><br>
+
+                    <button
+                        type="button"
+                        onclick="openCustomerMap('${escapeAttr(customer.id)}')"
+                        style="
+                            padding:6px 10px;
+                            border:0;
+                            border-radius:6px;
+                            cursor:pointer;
+                        "
+                    >
+                        Xem vị trí
+                    </button>
+
+                </div>
+
+            `);
+
+
+            mapMarkers.push(
+                marker
+            );
+
+        }
+    );
+
 }
+
+
 // ============================================================
 // THỐNG KÊ
 // ============================================================
+
 function updateStats() {
+
     const total =
         customers.length;
+
+
     const gpsCount =
         customers.filter(
             function (customer) {
+
                 return (
-                    customer.latitude != null &&
-                    customer.longitude != null
+                    customer.latitude !==
+                        null &&
+                    customer.latitude !==
+                        undefined &&
+                    customer.longitude !==
+                        null &&
+                    customer.longitude !==
+                        undefined
                 );
+
             }
         ).length;
+
+
     const photoCount =
         customers.filter(
             function (customer) {
+
                 return !!customer.photo_url;
+
             }
         ).length;
+
+
     const totalElement =
         document.getElementById(
             "totalCustomers"
         );
+
+
     const gpsElement =
         document.getElementById(
             "gpsCustomers"
         );
+
+
     const photoElement =
         document.getElementById(
             "photoCustomers"
         );
+
+
     if (totalElement) {
+
         totalElement.textContent =
             total;
+
     }
+
+
     if (gpsElement) {
+
         gpsElement.textContent =
             gpsCount;
+
     }
+
+
     if (photoElement) {
+
         photoElement.textContent =
             photoCount;
+
     }
+
 }
+
+
 // ============================================================
 // RESET FORM
 // ============================================================
+
 function resetForm() {
-    editingId = null;
-    latitude = null;
-    longitude = null;
-    photoData = null;
+
+    editingId =
+        null;
+
+    latitude =
+        null;
+
+    longitude =
+        null;
+
+    photoData =
+        null;
+
+
     const nameInput =
         document.getElementById(
             "name"
         );
+
+
     const addressInput =
         document.getElementById(
             "address"
         );
+
+
     const noteInput =
         document.getElementById(
             "note"
         );
-    const cameraInput =
-        document.getElementById(
-            "cameraInput"
-        );
-    const preview =
-        document.getElementById(
-            "photoPreview"
-        );
+
+
+    if (nameInput) {
+
+        nameInput.value =
+            "";
+
+    }
+
+
+    if (addressInput) {
+
+        addressInput.value =
+            "";
+
+    }
+
+
+    if (noteInput) {
+
+        noteInput.value =
+            "";
+
+    }
+
+
     const gpsStatus =
         document.getElementById(
             "gpsStatus"
         );
+
+
+    if (gpsStatus) {
+
+        gpsStatus.textContent =
+            "Chưa lấy vị trí";
+
+    }
+
+
     const photoStatus =
         document.getElementById(
             "photoStatus"
         );
-    if (nameInput) {
-        nameInput.value = "";
-    }
-    if (addressInput) {
-        addressInput.value = "";
-    }
-    if (noteInput) {
-        noteInput.value = "";
-    }
-    if (cameraInput) {
-        cameraInput.value = "";
-    }
-    if (preview) {
-        preview.src = "";
-        preview.style.display =
-            "none";
-    }
-    if (gpsStatus) {
-        gpsStatus.textContent =
-            "Chưa lấy vị trí";
-    }
+
+
     if (photoStatus) {
+
         photoStatus.textContent =
             "Chưa chụp ảnh";
+
     }
+
+
+    const preview =
+        document.getElementById(
+            "photoPreview"
+        );
+
+
+    if (preview) {
+
+        preview.src =
+            "";
+
+        preview.style.display =
+            "none";
+
+    }
+
+
+    const cameraInput =
+        document.getElementById(
+            "cameraInput"
+        );
+
+
+    if (cameraInput) {
+
+        cameraInput.value =
+            "";
+
+    }
+
+
+    const saveBtn =
+        document.getElementById(
+            "saveBtn"
+        );
+
+
+    if (saveBtn) {
+
+        saveBtn.textContent =
+            "Lưu khách hàng";
+
+    }
+
 }
+
+
 // ============================================================
 // ĐĂNG XUẤT
 // ============================================================
+
 async function logout() {
+
     const confirmed =
         confirm(
-            "Bạn có muốn đăng xuất không?"
+            "Bạn có chắc muốn đăng xuất?"
         );
+
+
     if (!confirmed) {
+
         return;
+
     }
-    const {
-        error
-    } =
-        await db.auth.signOut();
-    if (error) {
-        console.error(error);
-        alert(
-            "❌ Không thể đăng xuất:\n\n" +
-            error.message
+
+
+    try {
+
+        if (db) {
+
+            await db.auth.signOut();
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            error
         );
-        return;
+
     }
-    currentUser = null;
-    customers = [];
-    openedCustomerId = null;
-    editingId = null;
-    latitude = null;
-    longitude = null;
-    photoData = null;
+
+
+    currentUser =
+        null;
+
+    customers =
+        [];
+
+    openedCustomerId =
+        null;
+
+
     if (map) {
+
         map.remove();
-        map = null;
+
+        map =
+            null;
+
+        mapMarkers =
+            [];
+
     }
-    mapMarkers = [];
+
+
     showLogin();
+
 }
+
+
 // ============================================================
 // ESCAPE HTML
 // ============================================================
+
 function escapeHTML(
     value
 ) {
+
     return String(
         value ?? ""
     )
@@ -1890,4 +3324,57 @@ function escapeHTML(
             /'/g,
             "&#039;"
         );
+
 }
+
+
+function escapeAttr(
+    value
+) {
+
+    return escapeHTML(
+        value
+    );
+
+}
+
+
+// ============================================================
+// CHO HTML GỌI ĐƯỢC HÀM
+// ============================================================
+
+window.showPage =
+    showPage;
+
+window.toggleCustomerDetail =
+    toggleCustomerDetail;
+
+window.showPhoto =
+    showPhoto;
+
+window.editCustomer =
+    editCustomer;
+
+window.deleteCustomer =
+    deleteCustomer;
+
+window.openCustomerMap =
+    openCustomerMap;
+
+window.navigateToCustomer =
+    navigateToCustomer;
+
+window.getGPS =
+    getGPS;
+
+window.logout =
+    logout;
+
+
+// ============================================================
+// HOÀN TẤT
+// ============================================================
+
+console.log(
+    "✅ Khách Hàng Bản Đồ - APP.JS đã sẵn sàng"
+);
